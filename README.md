@@ -1,2 +1,1 @@
-# OSProj
-OS Project
+# GFG---Django-Login-System
