@@ -1,40 +1,44 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up</title>
-</head>
-<body>
-
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        <strong>Message:</strong> {{ message }}
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-    <span aria-hidden="true">&times;</span>
-  </button>
-    </div>
-    {% endfor %}
-
-    <h2>Sign Up</h2>
-    {% for message in messages %}
-    <div>{{ message }}</div>
-    {% endfor %}
-    <form method="post" action="/signup/">
-        {% csrf_token %}
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br>
-        <label for="phone">Phone:</label>
-        <input type="text" id="phone" name="phone" required><br>
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required><br>
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required><br>
-        <label for="confirm_password">Confirm Password:</label>
-        <input type="password" id="confirm_password" name="confirm_password" required><br>
-        <button type="submit">Sign Up</button>
-    </form>
-    <p>Already have an account? <a href="/signin/">Sign in here</a></p>
-</body>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Sign Up</title>
+        <link rel="stylesheet" href="{% static 'webos/css/apps-common.css' %}">
+        <link rel="stylesheet" href="{% static 'webos/css/auth.css' %}">
+    </head>
+    <body class="auth">
+        <div class="auth-wrap">
+        <div class="auth-card">
+            <h2 class="auth-title">Create Account</h2>
+            <p class="auth-subtitle">Join the workspace. Verify your email to activate the account.</p>
+            <div class="app-card" style="margin:8px 0;padding:8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.04)">
+                <strong>Note:</strong> Username is permanent (cannot be changed), case-sensitive, and must be unique. One account per email ID.
+            </div>
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="msg">{{ message }}</div>
+                {% endfor %}
+            </div>
+            <form method="post" action="/signup/">
+                {% csrf_token %}
+                <div class="grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+                    <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" class="input" autocomplete="email" required></div>
+                    <div class="field"><label for="phone">Phone</label><input type="text" id="phone" name="phone" class="input" autocomplete="tel" required></div>
+                    <div class="field"><label for="username">Username</label><input type="text" id="username" name="username" class="input" autocomplete="username" required></div>
+                    <div class="field"><label for="password">Password</label><input type="password" id="password" name="password" class="input" autocomplete="new-password" required></div>
+                    <div class="field" style="grid-column:1/-1"><label for="confirm_password">Confirm Password</label><input type="password" id="confirm_password" name="confirm_password" class="input" autocomplete="new-password" required></div>
+                </div>
+                <div class="actions">
+                    <a href="/signin/">Already have an account?</a>
+                    <button type="submit" class="btn">Sign Up</button>
+                </div>
+            </form>
+        </div>
+        </div>
+        <script src="{% static 'webos/js/icons.js' %}"></script>
+        <script src="{% static 'webos/js/auth.js' %}"></script>
+    </body>
 </html>

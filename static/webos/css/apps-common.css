@@ -1,0 +1,43 @@
+:root{
+	--surface: rgba(31,41,55,.78); --text:#e5e7eb; --border:#374151; --accent:#3b82f6;
+	/* Animation tokens for apps (iframe scope) */
+	--anim-fast: .14s; --anim-med: .22s; --anim-slow: .36s;
+	--ease-out: cubic-bezier(.22,1,.36,1); --ease-in-out: cubic-bezier(.4,0,.2,1);
+}
+body.app{ margin:0; font-family:system-ui,Segoe UI,Arial,sans-serif; color:var(--text); background:transparent; }
+.app-card{ background:var(--surface); backdrop-filter:blur(14px) saturate(1.05); border:1px solid var(--border); border-radius:14px; padding:14px; transition: box-shadow var(--anim-med) var(--ease-in-out), transform var(--anim-fast) var(--ease-out) }
+.row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+.btn{ padding:10px 14px; border:1px solid var(--border); border-radius:12px; background:#1f2937; color:#fff; cursor:pointer; transition:box-shadow var(--anim-med) var(--ease-in-out), transform var(--anim-fast) var(--ease-out) }
+.btn:hover{ box-shadow:0 8px 20px rgba(139,92,246,.25), 0 0 0 1px rgba(139,92,246,.35) inset; transform:translateY(-1px) }
+.btn:active{ transform:translateY(0) scale(.98) }
+.btn.icon{ display:inline-flex; align-items:center; gap:8px }
+.field{ display:flex; flex-direction:column; gap:6px }
+.input{ padding:8px 12px; border:1px solid var(--border); border-radius:12px; background:#0b1220; color:#e5e7eb; transition: border-color var(--anim-fast) var(--ease-in-out), background var(--anim-fast) var(--ease-in-out) }
+.input:focus{ outline:none; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); background: rgba(11,18,32,.9) }
+.grid{ display:grid; gap:8px }
+.grid.auto-fit-120{ grid-template-columns:repeat(auto-fit,minmax(120px,1fr)) }
+.grid.auto-fit-140{ grid-template-columns:repeat(auto-fit,minmax(140px,1fr)) }
+
+/* Light theme overrides when parent adds .theme-light */
+.theme-light .window .content iframe body.app, .theme-light body.app{ --surface: rgba(255,255,255,.86); --text:#0f172a; --border:#cbd5e1; --accent:#2563eb; }
+.theme-light .btn{ background:#eef2ff; color:#111 }
+.theme-light .input{ background:#fff; color:#111 }
+
+/* Global scrollbars inside apps: transparent tracks */
+*::-webkit-scrollbar-track{ background: transparent }
+*::-webkit-scrollbar{ width: 10px; height: 10px }
+*::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.35); border-radius: 10px }
+*{ scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.35) transparent }
+
+/* Subtle card hover lift in apps */
+.app-card:hover{ box-shadow: 0 10px 24px rgba(0,0,0,.25) }
+
+/* App enter animations */
+@keyframes appFadeInUp { from{ opacity:0; transform: translateY(6px) scale(.98); } to{ opacity:1; transform: translateY(0) scale(1); } }
+body.app.app-animate-enter{ animation: appFadeInUp var(--anim-med) var(--ease-out); }
+.app-card.app-card-enter{ animation: appFadeInUp var(--anim-med) var(--ease-out); }
+
+/* Respect reduced motion inside apps */
+@media (prefers-reduced-motion: reduce){
+	*, *::before, *::after{ animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
+}

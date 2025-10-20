@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password</title>
+  <link rel="stylesheet" href="{% static 'webos/css/apps-common.css' %}">
+  <link rel="stylesheet" href="{% static 'webos/css/auth.css' %}">
+</head>
+<body class="auth">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2 class="auth-title">Reset Password</h2>
+      <p class="auth-subtitle">Choose a new password for your account.</p>
+      <div class="messages">
+        {% for message in messages %}
+          <div class="msg">{{ message }}</div>
+        {% endfor %}
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="field"><label for="password">New Password</label><input type="password" id="password" name="password" class="input" autocomplete="new-password" required></div>
+        <div class="field"><label for="confirm_password">Confirm Password</label><input type="password" id="confirm_password" name="confirm_password" class="input" autocomplete="new-password" required></div>
+        <div class="actions">
+          <a href="/signin/">Back to sign in</a>
+          <button type="submit" class="btn">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script src="{% static 'webos/js/icons.js' %}"></script>
+  <script src="{% static 'webos/js/auth.js' %}"></script>
+</body>
+</html>

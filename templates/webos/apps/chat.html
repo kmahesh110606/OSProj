@@ -1,0 +1,87 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<style>
+body.app{height:100vh;display:flex}
+.side{width:260px;border-right:1px solid var(--border);padding:8px;overflow:auto;background:rgba(255,255,255,.04)}
+.pane-collapsed .side{display:none}
+.pane-collapsed .main{width:100%}
+.side .nav{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.side .nav .item{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:10px;cursor:pointer}
+.side .nav .item.active{background:rgba(255,255,255,.08)}
+.badge{min-width:18px;height:18px;border-radius:999px;background:#ef4444;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;padding:0 6px}
+.main{flex:1;display:flex;flex-direction:column}
+.bar{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
+.list{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+.msg{display:flex;gap:8px}
+.msg .me{margin-left:auto}
+.input-row{display:flex;gap:8px;padding:8px;border-top:1px solid var(--border)}
+/* Toast */
+.toast{position:fixed;right:14px;bottom:14px;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+</style></head>
+<body class="app">
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="/static/webos/js/icons.js"></script>
+  <script src="/static/webos/js/apps-common.js"></script>
+  <div class="side app-card">
+    <div class="nav" id="nav">
+      <div class="item active" data-tab="convs"><span class="iconify" data-icon="fluent:chat-20-regular"></span><span>Conversations</span></div>
+      <div class="item" data-tab="invites"><span class="iconify" data-icon="fluent:mail-20-regular"></span><span>Invites</span><span id="badge" class="badge" style="display:none">0</span></div>
+    </div>
+    <div id="convs"></div>
+    <div id="invites" style="display:none"></div>
+  </div>
+  <div class="main">
+    <div class="bar app-card">
+  <input id="dm-user" class="input" placeholder="Start DM with username (case-sensitive)" style="width:220px">
+      <button id="start-dm" class="btn icon"><span class="iconify" data-icon="fluent:send-20-regular"></span><span>Invite</span></button>
+      <div style="margin-left:auto"></div>
+      <div id="cur-title" class="muted" style="opacity:.85"></div>
+    </div>
+    <div id="msgs" class="list app-card" style="margin:8px"></div>
+    <div class="input-row app-card">
+      <input id="msg" class="input" placeholder="Type a message...">
+      <button id="send" class="btn">Send</button>
+    </div>
+  </div>
+  <script>
+    // Fallback toast if apps-common isn't loaded yet
+    if(typeof window.toast !== 'function'){
+      window.toast = function(msg){ try{ if(typeof showToast==='function') showToast(msg); else alert(msg); }catch(e){ alert(String(msg||'')); } };
+    }
+    const $=s=>document.querySelector(s);
+  function toast(msg){ try{ const t=document.createElement('div'); t.className='toast app-card'; t.textContent=String(msg||''); document.body.appendChild(t); setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(6px)'; setTimeout(()=> t.remove(), 280); }, 1600); }catch(e){} }
+  let cur=null; let curTab='convs'; let convIndex = new Map();
+  async function list(){ const r=await fetch('../api/chat/list'); const j=await r.json(); const host=$('#convs'); host.innerHTML=''; convIndex.clear(); (j.items||[]).forEach(it=>{ convIndex.set(it.id, it); const b=document.createElement('button'); b.className='btn'; b.textContent=it.title||((it.kind==='room'?'Room ':'DM ')+it.id); b.onclick=()=>{ cur=it.id; updateCurTitle(); loadMsgs(); }; host.appendChild(b); }); updateCurTitle(); }
+  async function listInvites(){ const r=await fetch('../api/chat/invites'); const j=await r.json(); const host=$('#invites'); host.innerHTML=''; const items=j.items||[]; if(!items.length){ host.innerHTML='<div class="muted" style="opacity:.8">No invites</div>'; } items.forEach(it=>{ const row=document.createElement('div'); row.style.display='flex'; row.style.gap='8px'; row.style.alignItems='center'; row.style.margin='6px 0'; row.innerHTML = `<span class='iconify' data-icon='fluent:mail-20-regular'></span><span>${it.title||('Invite '+it.id)}</span><span style='margin-left:auto'></span><button class='btn' data-id='${it.id}'>Accept</button>`; row.querySelector('button').onclick=()=> accept(it.id); host.appendChild(row); }); const badge=$('#badge'); badge.style.display = items.length? 'inline-flex':'none'; badge.textContent = items.length; }
+  async function accept(id){ const fd=new FormData(); fd.set('conversation_id', id); await fetch('../api/chat/accept',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); listInvites(); list(); }
+    async function startDM(){
+      const u=$('#dm-user').value.trim(); if(!u) return;
+      if(!confirm(`Send invite to @${u}?`)) return;
+      const fd=new FormData(); fd.set('username', u);
+      const r=await fetch('../api/chat/start_dm',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
+      const j=await r.json();
+        if(!r.ok){ if(j.error==='user not found'){ toast('User not found. Usernames are case-sensitive.'); } else { toast(j.error||'Failed'); } return; }
+      cur=j.conversation_id; list(); listInvites();
+      try{
+          if(j.status==='invited'){ toast('Invite sent to '+u); }
+          else if(j.status==='already_invited'){ toast('Invite already pending for '+u); }
+        else if(j.status==='exists_accepted' || j.status==='exists'){ toast('Conversation ready'); }
+      }catch(e){}
+      $('#dm-user').value='';
+      loadMsgs();
+    }
+  async function loadMsgs(){ if(!cur) return; const r=await fetch(`../api/chat/${cur}/messages`); const j=await r.json(); const host=$('#msgs'); host.innerHTML=''; (j.items||[]).forEach(m=>{ const row=document.createElement('div'); row.className='msg'; row.innerHTML=`<div ${m.sender===window.USERNAME?'class="me"':''}><b>${m.sender}</b>: ${m.content}</div>`; host.appendChild(row); }); host.scrollTop=host.scrollHeight; }
+  function updateCurTitle(){ try{ const el=$('#cur-title'); if(!el) return; if(!cur){ el.textContent=''; return; } const it = convIndex.get(cur); el.textContent = it? (it.title || (it.kind==='room'?`Room ${cur}`:`DM ${cur}`)) : `#${cur}`; }catch(e){} }
+    async function send(){ if(!cur) return; const txt=$('#msg').value.trim(); if(!txt) return; const fd=new FormData(); fd.set('content', txt); const r=await fetch(`../api/chat/${cur}/send`,{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); if(!r.ok) return; $('#msg').value=''; loadMsgs(); }
+    function getCsrf(){ const n='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    // attempt to detect username from parent profile card
+    window.addEventListener('message', (ev)=>{ const msg=ev.data||{}; if(msg.type==='webos:state' && msg.state && msg.state.user){ window.USERNAME = msg.state.user.username; } });
+    document.getElementById('nav').addEventListener('click', (e)=>{ const it=e.target.closest('.item'); if(!it) return; document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n===it)); curTab=it.dataset.tab; $('#convs').style.display = (curTab==='convs')?'':'none'; $('#invites').style.display = (curTab==='invites')?'':'none'; });
+  // Listen for pane toggle and launch params from shell
+  window.addEventListener('message', (ev)=>{ const msg=ev.data||{}; if(msg.type==='webos:togglePane'){ document.body.classList.toggle('pane-collapsed'); }
+  if(msg.type==='webos:params' && msg.params){ try{ if(msg.params.roomId){ cur = Number(msg.params.roomId); updateCurTitle(); loadMsgs(); } }catch(e){} }
+  });
+    list(); listInvites(); setInterval(()=>{ if(cur) loadMsgs(); listInvites(); }, 3000);
+  </script>
+</body></html>

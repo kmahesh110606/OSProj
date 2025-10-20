@@ -1,0 +1,32 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<style>
+body.app{display:flex;align-items:center;justify-content:center;height:100vh}
+.card{background:var(--surface);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;width:min(340px, 96%)}
+.time{font-size:36px;margin-bottom:12px;font-variant-numeric:tabular-nums}
+.card button{padding:8px 12px;margin:4px}
+ul{list-style:none;padding:0;margin:0;max-height:160px;overflow:auto;text-align:left}
+li{padding:4px 0;border-bottom:1px solid var(--border)}
+</style></head>
+<body class="app">
+  <div class="card app-card">
+    <div class="time" id="t">00:00.000</div>
+    <div>
+      <button id="start" class="btn">Start</button>
+      <button id="lap" class="btn">Lap</button>
+      <button id="reset" class="btn">Reset</button>
+    </div>
+    <ul id="laps"></ul>
+  </div>
+  <script>
+    let running=false, startTime=0, elapsed=0, timer=null;
+    const t=document.getElementById('t'); const laps=document.getElementById('laps');
+    function fmt(ms){ const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000), x=ms%1000; return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(x).padStart(3,'0')}`; }
+    function tick(){ const ms=running? (Date.now()-startTime)+elapsed : elapsed; t.textContent = fmt(ms); }
+    document.getElementById('start').onclick=()=>{ if(!running){ running=true; startTime=Date.now(); timer=setInterval(tick,50);} else { running=false; elapsed += Date.now()-startTime; clearInterval(timer); tick(); } };
+    document.getElementById('reset').onclick=()=>{ running=false; elapsed=0; clearInterval(timer); t.textContent=fmt(0); laps.innerHTML=''; };
+    document.getElementById('lap').onclick=()=>{ const li=document.createElement('li'); li.textContent=t.textContent; laps.prepend(li); };
+    tick();
+  </script>
+</body></html>

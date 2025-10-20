@@ -1,0 +1,48 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "django-makemigrations-migrate",
+			"type": "shell",
+			"command": "python manage.py makemigrations webos && python manage.py migrate",
+			"args": [],
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "django-makemigrations-migrate-pwsh",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"manage.py",
+				"makemigrations",
+				"webos",
+				";",
+				"python",
+				"manage.py",
+				"migrate"
+			],
+			"problemMatcher": [
+				"$eslint - stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "django-makemigrations-migrate-pwsh",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"manage.py",
+				"makemigrations",
+				"webos",
+				";",
+				"python",
+				"manage.py",
+				"migrate"
+			],
+			"group": "build"
+		}
+	]
+}

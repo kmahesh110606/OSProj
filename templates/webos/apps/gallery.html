@@ -1,0 +1,60 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<!-- Removed external Iconify CDN. Icons fallback via CSS/emoji. -->
+<style>
+.toolbar{display:flex;gap:12px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
+.toolbar .btn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:80px}
+.toolbar .btn .iconify{font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:10px}
+.card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.04)}
+.card img{width:100%;height:120px;object-fit:cover;display:block}
+.card .name{padding:6px 8px;font-size:12px;opacity:.8}
+.card.selected{outline:2px solid #60a5fa}
+.card.selected .name{font-weight:600;opacity:1}
+.viewer{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6)}
+.viewer img{max-width:100%;max-height:100%;object-fit:contain}
+.viewer .close{position:absolute;top:10px;right:10px}
+</style></head>
+<body class="app">
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="/static/webos/js/icons.js"></script>
+  <script src="/static/webos/js/apps-common.js"></script>
+  <div class="toolbar app-card">
+      <button id="download-selected" class="btn"><span class="iconify" data-icon="fluent:arrow-download-20-regular"></span><span>Download</span></button>
+      <button id="delete-selected" class="btn"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
+      <div style="margin-left:auto;opacity:.8">Right-click images for more</div>
+    </div>
+  <div id="grid" class="grid"></div>
+  <div id="viewer" class="viewer">
+    <button class="btn close">Close</button>
+    <img id="viewer-img" alt="">
+  </div>
+  <menu id="ctx" style="position:absolute;display:none;z-index:10" class="app-card ctx">
+    <button class="menu-btn" data-act="open"><span class="iconify" data-icon="fluent:image-20-regular"></span><span>Open</span></button>
+    <button class="menu-btn" data-act="download"><span class="iconify" data-icon="fluent:arrow-download-20-regular"></span><span>Download</span></button>
+    <button class="menu-btn" data-act="rename"><span class="iconify" data-icon="fluent:rename-20-regular"></span><span>Rename</span></button>
+    <button class="menu-btn" data-act="delete" style="color:#ef4444"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
+  </menu>
+  <script>
+  const IMAGES=['.png','.jpg','.jpeg','.gif','.webp','.bmp'];
+  const $=s=>document.querySelector(s);
+  async function images(){ const r=await fetch('../api/fs/images'); return r.json(); }
+  async function read(path){ const r=await fetch(`../api/fs/read?path=${encodeURIComponent(path)}`); return r.json(); }
+  async function del(path){ const fd=new FormData(); fd.set('path', path); await fetch('../api/fs/delete',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); }
+  async function rename(path, name){ const fd=new FormData(); fd.set('path', path); fd.set('name', name); const r=await fetch('../api/fs/rename',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); return r.json(); }
+  function urlFromData(d){ if(!d) return ''; return d.is_base64? `data:;base64,${d.content}` : `data:text/plain;base64,${btoa(d.content||'')}`; }
+  function hideCtx(){ const m=$('#ctx'); m.style.display='none'; }
+  function showCtx(x,y, path){ const m=$('#ctx'); m.style.left=x+'px'; m.style.top=y+'px'; m.style.display='block'; m.dataset.path=path; }
+  let selectedPath = null;
+  async function load(){ const sel=new URLSearchParams(location.search).get('path')||new URLSearchParams(location.search).get('select'); const j=await images(); const grid=$('#grid'); grid.innerHTML=''; for(const e of (j.images||[])){ const d=await read(e.path); const url=urlFromData(d); const card=document.createElement('div'); card.className='card'; card.innerHTML=`<img src="${url}" alt="${e.name}"><div class="name">${e.name}</div>`; card.addEventListener('click', ()=>{ document.querySelectorAll('.card.selected').forEach(el=>el.classList.remove('selected')); card.classList.add('selected'); selectedPath=e.path; showImage(e.name, url); }); card.oncontextmenu=(ev)=>{ ev.preventDefault(); showCtx(ev.clientX, ev.clientY, e.path); }; if(sel && sel===e.path){ card.classList.add('selected'); selectedPath=e.path; card.scrollIntoView({block:'center'}); showImage(e.name, url); } grid.appendChild(card); }
+  }
+  function showImage(name, url){ const v=$('#viewer'); const img=$('#viewer-img'); img.src=url; img.alt=name; v.style.display='flex'; try{ window.parent.postMessage({type:'webos:setTitle', title:`Gallery - ${name}`}, '*'); }catch(e){} }
+  $('#viewer .close').onclick=()=>{ const v=$('#viewer'); v.style.display='none'; try{ window.parent.postMessage({type:'webos:setTitle', title:`Gallery`}, '*'); }catch(e){} };
+  document.addEventListener('click', (e)=>{ const m=$('#ctx'); if(m.style.display==='block' && !m.contains(e.target)) hideCtx(); });
+  $('#ctx').addEventListener('click', async (e)=>{ const act=e.target?.dataset?.act; if(!act) return; const p=$('#ctx').dataset.path; hideCtx(); if(act==='download'){ window.location.href = `../api/fs/download?path=${encodeURIComponent(p)}`; } else if(act==='delete'){ await del(p); load(); } else if(act==='rename'){ const name=prompt('New name'); if(name){ await rename(p, name); load(); } } });
+  $('#download-selected').onclick=()=>{ if(selectedPath) window.location.href=`../api/fs/download?path=${encodeURIComponent(selectedPath)}`; };
+  $('#delete-selected').onclick=async()=>{ if(selectedPath){ await del(selectedPath); load(); } };
+  load();
+  </script>
+</body></html>

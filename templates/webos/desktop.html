@@ -1,0 +1,223 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web OS</title>
+  <link rel="stylesheet" href="{% static 'webos/css/ui.css' %}">
+  <link rel="stylesheet" href="{% static 'webos/css/desktop.css' %}">
+  <!-- Official Fluent icons via Iconify CDN (preferred) -->
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="{% static 'webos/js/icons.js' %}" defer></script>
+  </head>
+  <body>
+    <!-- Welcome splash overlay -->
+    <div id="splash" class="splash">
+      <div class="splash-card">
+  <div class="splash-title">Welcome, {{ user.username|default:"User" }}</div>
+        <div id="splash-sub" class="splash-sub">Logging in…</div>
+        <div class="splash-progress">
+          <div id="splash-bar" class="splash-bar" style="width: 8%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="desktop" class="desktop" tabindex="0"></div>
+
+    <div id="taskbar" class="taskbar">
+      <div class="taskbar-left">
+  <button id="start-button" class="start-btn" title="Start"><span class="iconify" data-icon="fluent:window-20-regular"></span></button>
+  <button id="apps-button" class="start-btn" title="All apps"><span class="iconify" data-icon="fluent:apps-list-20-regular"></span></button>
+        <button id="search-button" class="start-btn" title="Search"><span class="iconify" data-icon="fluent:search-20-regular"></span></button>
+        <div id="taskbar-pins" class="taskbar-pins"></div>
+      </div>
+  <button id="dock-left" class="dock-scroll-btn" title="Scroll left"><span class="iconify" data-icon="fluent:chevron-left-24-regular"></span></button>
+  <div id="taskbar-windows" class="taskbar-windows"></div>
+  <button id="dock-right" class="dock-scroll-btn" title="Scroll right"><span class="iconify" data-icon="fluent:chevron-right-24-regular"></span></button>
+      <div class="taskbar-right">
+        <div id="clock" class="clock"></div>
+        <button id="user-button" class="start-btn" title="Account"><span class="iconify" data-icon="fluent:person-24-regular"></span></button>
+      </div>
+    </div>
+
+    <div id="start-menu" class="start-menu hidden">
+      <div class="start-menu-header">
+        <div class="start-tabs">
+          <button id="start-tab-pinned" class="start-tab-btn active" data-tab="pinned">
+            <span class="iconify" data-icon="fluent:pin-16-regular"></span>
+            <span>Pinned</span>
+          </button>
+          <button id="start-tab-all" class="start-tab-btn" data-tab="all">
+            <span class="iconify" data-icon="fluent:apps-list-20-regular"></span>
+            <span>All apps</span>
+          </button>
+        </div>
+      </div>
+      <div class="start-menu-grid">
+        <div id="pane-pinned" class="pane pinned">
+          <div class="pane-title">Pinned</div>
+          <div id="pinned-container" class="start-menu-apps">
+            <!-- Built-in pinned apps -->
+            <button class="start-app" data-static-pinned="1" data-slug="store" data-kind="builtin" data-icon="/static/assets/icons/store.svg">
+              <span class="app-icon"><img class="app-img" src="/static/assets/icons/store.svg" alt="Store" /></span>
+              <span class="app-title">Store</span>
+            </button>
+            <button class="start-app" data-static-pinned="1" data-slug="explorer" data-kind="builtin" data-icon="/static/assets/icons/explorer.svg">
+              <span class="app-icon"><img class="app-img" src="/static/assets/icons/explorer.svg" alt="Explorer" /></span>
+              <span class="app-title">File Explorer</span>
+            </button>
+            <button class="start-app" data-static-pinned="1" data-slug="notepad" data-kind="builtin" data-icon="/static/assets/icons/notepad.svg">
+              <span class="app-icon"><img class="app-img" src="/static/assets/icons/notepad.svg" alt="Notepad" /></span>
+              <span class="app-title">Notepad</span>
+            </button>
+            <button class="start-app" data-static-pinned="1" data-slug="gallery" data-kind="builtin" data-icon="/static/assets/icons/gallery.svg">
+              <span class="app-icon"><img class="app-img" src="/static/assets/icons/gallery.svg" alt="Gallery" /></span>
+              <span class="app-title">Gallery</span>
+            </button>
+            <button class="start-app" data-static-pinned="1" data-slug="sharedrop" data-kind="builtin" data-icon="/static/assets/icons/sharedrop.svg">
+              <span class="app-icon"><img class="app-img" src="/static/assets/icons/sharedrop.svg" alt="ShareDrop" /></span>
+              <span class="app-title">ShareDrop</span>
+            </button>
+            <button class="start-app" data-static-pinned="1" data-slug="calculator" data-kind="builtin" data-icon="/static/assets/icons/calculator.svg">
+              <span class="app-icon"><img class="app-img" src="/static/assets/icons/calculator.svg" alt="Calculator" /></span>
+              <span class="app-title">Calculator</span>
+            </button>
+            <button class="start-app" data-static-pinned="1" data-slug="settings" data-kind="builtin" data-icon="/static/assets/icons/settings.svg">
+              <span class="app-icon"><img class="app-img" src="/static/assets/icons/settings.svg" alt="Settings" /></span>
+              <span class="app-title">Settings</span>
+            </button>
+            <button class="start-app" data-static-pinned="1" data-slug="stopwatch" data-kind="builtin" data-icon="/static/assets/icons/stopwatch.svg">
+              <span class="app-icon"><img class="app-img" src="/static/assets/icons/stopwatch.svg" alt="Stopwatch" /></span>
+              <span class="app-title">Stopwatch</span>
+            </button>
+          </div>
+        </div>
+        <div id="pane-allapps" class="pane all-apps">
+          <div class="pane-title">All apps</div>
+          <div id="allapps-container" class="start-menu-list">
+            {% for app in apps %}
+            <button class="start-app" data-slug="{{ app.slug }}" data-app-id="{{ app.id }}" data-kind="{{ app.kind }}" data-url="{{ app.launch_url|default_if_none:'' }}" data-proxy="{% if app.use_proxy %}1{% else %}0{% endif %}" data-icon="{{ app.icon|default_if_none:'' }}">
+              <span class="app-icon">
+                {% if app.icon and ":" in app.icon %}
+                  <span class="iconify" data-icon="{{ app.icon }}"></span>
+                {% elif app.kind == 'pwa' and app.launch_url %}
+                  <!-- Use a neutral Fluent globe icon for PWAs; favicon will be proxied inside window title dynamically -->
+                  <span class="iconify" data-icon="fluent:globe-20-regular"></span>
+                {% elif app.icon %}
+                  <span class="iconify" data-icon="{{ app.icon }}"></span>
+                {% else %}
+                  <span class="iconify" data-icon="fluent:globe-20-regular"></span>
+                {% endif %}
+              </span>
+              <span class="app-title">{{ app.name }}</span>
+            </button>
+            {% empty %}
+              <div style="opacity:.7;padding:8px 6px">No apps installed yet. Open the Store to install apps.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start menu context menu -->
+    <menu id="start-ctx" class="start-ctx app-card hidden">
+      <button class="menu-btn" data-act="pin-start">Pin to Start</button>
+      <button class="menu-btn" data-act="pin-taskbar">Pin to taskbar</button>
+      <button class="menu-btn danger" data-act="uninstall">Uninstall</button>
+    </menu>
+
+    <div id="calendar" class="calendar hidden"></div>
+    <div id="search-menu" class="search-menu hidden">
+      <div class="search-bar">
+        <span class="iconify" data-icon="fluent:search-20-regular"></span>
+        <input id="search-input" class="input" placeholder="Search apps, files, folders..." />
+      </div>
+      <div id="search-results" class="search-results"></div>
+    </div>
+    <div id="apps-menu" class="apps-menu hidden">
+      <div class="apps-menu-bar">
+        <button id="apps-close-all" class="icon-btn" title="Close all windows"><span class="iconify" data-icon="fluent:dismiss-square-multiple-20-regular"></span><span style="margin-left:6px">Close All</span></button>
+        <button id="apps-close" class="icon-btn" title="Close menu"><span class="iconify" data-icon="fluent:dismiss-20-regular"></span></button>
+      </div>
+      <div id="running-apps" class="apps-grid"></div>
+    </div>
+    <div id="user-menu" class="user-menu hidden">
+      <div class="user-card">
+        <div id="user-avatar" class="avatar">U</div>
+        <div class="info">
+          <div style="opacity:.8;font-size:12px;margin-bottom:4px">User profile</div>
+          <div id="user-name" class="name" style="font-weight:700;font-size:16px">User</div>
+          <div id="user-phone" class="phone" style="opacity:.85">—</div>
+          <div class="row" style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap">
+            <span id="user-tier" class="pill">Free</span>
+            <button id="user-sync" class="pill-btn pill-warn" type="button" title="Sync now">
+              <span class="iconify" data-icon="fluent:arrow-sync-20-regular"></span>
+              <span class="label">Syncing…</span>
+            </button>
+            <span id="user-net" class="pill">Online</span>
+          </div>
+        </div>
+      </div>
+      <div class="user-actions">
+        <button id="user-open-settings" class="icon-btn" title="Settings"><span class="iconify" data-icon="fluent:settings-20-regular"></span><span>Settings</span></button>
+        <button id="user-logout" class="icon-btn" title="Logout"><span class="iconify" data-icon="fluent:arrow-exit-20-regular"></span><span>Logout</span></button>
+      </div>
+    </div>
+
+    <!-- Dock hover popup: enlarged icon + name -->
+    <div id="dock-pop" class="dock-pop hidden">
+      <div class="dock-pop-icon"></div>
+      <div class="dock-pop-title"></div>
+    </div>
+
+    <template id="window-template">
+      <div class="window" data-window-id="">
+        <div class="titlebar">
+          <div class="left-controls">
+            <button class="btn-back" title="Back"><span class="iconify" data-icon="fluent:arrow-left-20-regular"></span></button>
+            <button class="btn-pane" title="Pane"><span class="iconify" data-icon="fluent:panel-left-20-regular"></span></button>
+          </div>
+          <div class="title-center">
+            <span class="title-icon"></span>
+            <span class="title-text"></span>
+          </div>
+          <div class="controls">
+            <button class="btn-min"><span class="iconify" data-icon="fluent:subtract-20-regular"></span></button>
+            <button class="btn-max"><span class="iconify" data-icon="fluent:maximize-20-regular"></span></button>
+            <button class="btn-close"><span class="iconify" data-icon="fluent:dismiss-20-regular"></span></button>
+          </div>
+        </div>
+        <div class="content"></div>
+        <!-- Resizers: corners and edges -->
+        <div class="resizer resizer-n"></div>
+        <div class="resizer resizer-s"></div>
+        <div class="resizer resizer-e"></div>
+        <div class="resizer resizer-w"></div>
+        <div class="resizer resizer-ne"></div>
+        <div class="resizer resizer-nw"></div>
+        <div class="resizer resizer-se"></div>
+        <div class="resizer resizer-sw"></div>
+      </div>
+    </template>
+
+    <script>
+      window.WEBOS_APPS = {
+        // Built-in app routes
+        'calculator': { kind: 'builtin', title: 'Calculator', icon: '/static/assets/icons/calculator.svg', path: "{% url 'webos-app-calculator' %}" },
+        'notepad':    { kind: 'builtin', title: 'Notepad',    icon: '/static/assets/icons/notepad.svg', path: "{% url 'webos-app-notepad' %}" },
+        'explorer':   { kind: 'builtin', title: 'File Explorer', icon: '/static/assets/icons/explorer.svg', path: "{% url 'webos-app-explorer' %}" },
+  'sharedrop':  { kind: 'builtin', title: 'ShareDrop', icon: '/static/assets/icons/sharedrop.svg', path: "{% url 'webos-app-sharedrop' %}" },
+  'chat':       { kind: 'builtin', title: 'Chat', icon: '/static/assets/icons/chat.svg', path: "{% url 'webos-app-chat' %}" },
+  'rooms':      { kind: 'builtin', title: 'Rooms', icon: '/static/assets/icons/rooms.svg', path: "{% url 'webos-app-rooms' %}" },
+        'settings':   { kind: 'builtin', title: 'Settings', icon: '/static/assets/icons/settings.svg', path: "{% url 'webos-app-settings' %}" },
+        'stopwatch':  { kind: 'builtin', title: 'Stopwatch', icon: '/static/assets/icons/stopwatch.svg', path: "{% url 'webos-app-stopwatch' %}" },
+        'texteditor': { kind: 'builtin', title: 'Notepad', icon: '/static/assets/icons/notepad.svg', path: "{% url 'webos-app-notepad' %}" },
+        'gallery':    { kind: 'builtin', title: 'Gallery', icon: '/static/assets/icons/gallery.svg', path: "{% url 'webos-app-gallery' %}" },
+        'store':      { kind: 'builtin', title: 'Store', icon: '/static/assets/icons/store.svg', path: "{% url 'webos-app-store' %}" },
+        'whiteboard': { kind: 'builtin', title: 'Whiteboard', icon: '/static/assets/icons/whiteboard.svg', path: "{% url 'webos-app-whiteboard' %}" },
+      };
+    </script>
+    <script src="{% static 'webos/js/desktop.js' %}"></script>
+  </body>
+</html>

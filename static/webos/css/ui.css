@@ -1,0 +1,113 @@
+/* Global UI stylesheet for Web OS */
+:root{
+  /* Colors */
+  --os-bg: #0b1220;
+  --os-surface: rgba(31,41,55,.78);
+  --os-surface-strong: rgba(17,24,39,.85);
+  --os-text: #e5e7eb;
+  --os-muted: rgba(229,231,235,.75);
+  --os-border: #374151;
+  --os-accent: #3b82f6;
+  --os-glow: #8b5cf6;
+  /* Radii */
+  --os-radius-sm: 8px; --os-radius-md: 12px; --os-radius-lg: 16px; --os-radius-xl: 20px;
+  /* Spacing */
+  --os-pad-sm: 6px; --os-pad-md: 10px; --os-pad-lg: 14px; --os-pad-xl: 18px;
+  /* Shadows */
+  --os-shadow-1: 0 8px 20px rgba(0,0,0,.35);
+  --os-shadow-2: 0 14px 44px rgba(0,0,0,.45);
+  --os-shadow-3: 0 28px 80px rgba(0,0,0,.65);
+  /* Blur */
+  --os-blur-weak: blur(14px) saturate(1.05);
+  --os-blur-strong: blur(24px) saturate(1.15);
+}
+
+/* Light theme overrides (opt-in via body.theme-light) */
+body.theme-light{
+  --os-bg: #f3f4f6;
+  --os-surface: rgba(255,255,255,.86);
+  --os-surface-strong: rgba(255,255,255,.92);
+  --os-text: #0f172a;
+  --os-muted: rgba(15,23,42,.75);
+  --os-border: #cbd5e1;
+  --os-accent: #2563eb;
+  --os-glow: #7c3aed;
+}
+
+/* Scrollbar: thumb only (no track) */
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.35);border-radius:10px}
+
+/* Buttons (2D, hover glow) */
+.os-btn,
+.start-btn,
+.apps-menu .icon-btn,
+.user-actions .icon-btn{
+  background:#1f2937;
+  color:var(--os-text);
+  border:1px solid var(--os-border);
+  border-radius:var(--os-radius-md);
+  padding:var(--os-pad-md) var(--os-pad-lg);
+  cursor:pointer;
+  transition:box-shadow .15s, transform .1s, background .15s;
+}
+.os-btn:hover,
+.start-btn:hover,
+.apps-menu .icon-btn:hover,
+.user-actions .icon-btn:hover{
+  box-shadow:0 8px 20px color-mix(in oklab, var(--os-glow) 25%, transparent), 0 0 0 1px color-mix(in oklab, var(--os-glow) 35%, transparent) inset;
+  transform: scale(1.04);
+}
+.os-btn--icon{display:inline-flex;align-items:center;gap:8px}
+.os-icon{display:inline-flex;align-items:center;justify-content:center}
+
+/* Window shell */
+.os-window, .window{
+  background:var(--os-surface);
+  backdrop-filter:var(--os-blur-weak);
+  border:1px solid var(--os-border);
+  border-radius:var(--os-radius-lg);
+  box-shadow:0 16px 44px rgba(0,0,0,.50);
+}
+.os-window--active, .window.active-window{
+  box-shadow:var(--os-shadow-3), 0 0 0 1px color-mix(in oklab, var(--os-glow) 35%, transparent) inset;
+}
+.os-window__content, .content{position:relative;background:rgba(0,0,0,.12)}
+/* Mouse-follow glow */
+.os-window--glow::before, .window.glow-enabled::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(220px circle at var(--mx,-1000px) var(--my,-1000px), color-mix(in oklab, var(--os-glow) 30%, transparent), transparent 60%);
+  opacity:.9;transition:opacity .15s;
+}
+
+/* Titlebar */
+.os-titlebar, .titlebar{
+  height:38px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;background:rgba(17,24,39,.78);
+  backdrop-filter:var(--os-blur-strong);
+  border-bottom:1px solid var(--os-border);
+  border-radius:var(--os-radius-lg) var(--os-radius-lg) 0 0;
+}
+.os-titlebar__controls button, .titlebar .controls button{
+  width:30px;height:24px;margin-left:6px;border:1px solid var(--os-border);
+  border-radius:6px;background:#374151;color:var(--os-text);cursor:pointer;transition:box-shadow .15s, background .15s
+}
+.os-titlebar__controls button:hover, .titlebar .controls button:hover{
+  box-shadow:0 6px 16px color-mix(in oklab, var(--os-glow) 25%, transparent), 0 0 0 1px color-mix(in oklab, var(--os-glow) 35%, transparent) inset;
+}
+
+/* Start menu and app tiles */
+.os-start, .start-menu{background:var(--os-surface-strong);backdrop-filter:var(--os-blur-strong);border:1px solid var(--os-border);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55)}
+.os-start__apps, .start-menu-apps{display:grid;gap:12px}
+.os-app-tile, .start-app{
+  background:#1f2937;border:1px solid var(--os-border);border-radius:12px;padding:16px 12px;
+  color:var(--os-text);text-align:center;cursor:pointer;transition:box-shadow .15s, transform .1s
+}
+.os-app-tile:hover, .start-app:hover{box-shadow:0 10px 26px color-mix(in oklab, var(--os-glow) 28%, transparent), 0 0 0 1px color-mix(in oklab, var(--os-glow) 38%, transparent) inset; transform: translateY(-1px)}
+
+/* Utilities */
+.is-glassy{background:var(--os-surface);backdrop-filter:var(--os-blur-weak);border:1px solid var(--os-border);border-radius:var(--os-radius-lg)}
+.pad-sm{padding:var(--os-pad-sm)} .pad-md{padding:var(--os-pad-md)} .pad-lg{padding:var(--os-pad-lg)} .pad-xl{padding:var(--os-pad-xl)}
+.round-sm{border-radius:var(--os-radius-sm)} .round-md{border-radius:var(--os-radius-md)} .round-lg{border-radius:var(--os-radius-lg)}
+.shadow-1{box-shadow:var(--os-shadow-1)} .shadow-2{box-shadow:var(--os-shadow-2)} .shadow-3{box-shadow:var(--os-shadow-3)}

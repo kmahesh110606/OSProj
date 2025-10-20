@@ -1,0 +1,203 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="/static/webos/css/ui.css">
+  <link rel="stylesheet" href="/static/webos/css/apps-common.css">
+  <style>
+    :root{
+      --np-border: var(--os-border);
+      --np-bg: color-mix(in oklab, var(--os-surface) 100%, transparent);
+      --np-bg-strong: color-mix(in oklab, var(--os-surface-strong) 100%, transparent);
+      --np-text: var(--os-text);
+      --np-muted: var(--os-muted);
+    }
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;background:transparent;color:var(--np-text)}
+    .wrap{display:flex;height:100vh;background:transparent}
+  .list{width:280px;border-right:1px solid var(--np-border);padding:10px;overflow:auto;background:rgba(0,0,0,.06)}
+    body.theme-light .list{background:rgba(255,255,255,.5)}
+    .editor{flex:1;display:flex;flex-direction:column}
+  .editor header{display:flex;gap:10px;align-items:center;padding:10px;border-bottom:1px solid var(--np-border);background:var(--np-bg-strong);flex-wrap:wrap}
+    input.title{flex:1;padding:8px 10px;border:1px solid var(--np-border);border-radius:8px;background:#111827;color:var(--np-text)}
+    body.theme-light input.title{background:#ffffff}
+    textarea{flex:1;padding:12px;border:0;outline:0;font-family:Consolas,monospace;font-size:14px;background:transparent;color:var(--np-text)}
+    button{padding:8px 12px}
+  li{list-style:none;padding:8px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px}
+    li:hover{background:rgba(139,92,246,.08)}
+    li.active{background:rgba(139,92,246,.14)}
+  .list .iconify{font-size:18px}
+    .toolbar{display:flex;gap:8px;margin-bottom:8px}
+    .tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+  /* Pane collapse support */
+  .pane-collapsed .list{display:none}
+  .pane-collapsed .editor{width:100%}
+    @media (max-width: 720px){
+      .editor header{gap:8px}
+      .tabs{order:3;width:100%;justify-content:flex-end}
+      .hint{order:2}
+      input.title{order:1;min-width:220px;flex:1}
+    }
+    .tabs .tab{padding:8px 12px;border-radius:8px;border:1px solid var(--np-border);background:#1f2937;color:var(--np-text);cursor:pointer;transition:box-shadow .15s, transform .1s}
+    .tabs .tab:hover{box-shadow:0 6px 16px color-mix(in oklab, var(--os-glow) 25%, transparent), 0 0 0 1px color-mix(in oklab, var(--os-glow) 35%, transparent) inset; transform: translateY(-1px)}
+    body.theme-light .tabs .tab{background:#ffffff}
+    .tabs .tab.active{outline:2px solid color-mix(in oklab, var(--os-glow) 45%, transparent)}
+    .preview{flex:1;overflow:auto;padding:14px;border-top:1px solid var(--np-border)}
+    .split{display:flex;gap:0;height:calc(100% - 52px)}
+    .split .left,.split .right{flex:1;display:flex;flex-direction:column}
+    .hint{opacity:.7;font-size:12px;margin-left:6px}
+    .icon{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center}
+  </style>
+</head>
+<body class="app">
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="/static/webos/js/icons.js"></script>
+  <script src="/static/webos/js/apps-common.js"></script>
+  <div class="wrap">
+    <aside class="list">
+      <div class="toolbar">
+  <button id="new" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:add-20-regular"></span><span>New</span></button>
+  <button id="refresh" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:arrow-sync-20-regular"></span><span>Open</span></button>
+      </div>
+      <div style="padding:4px 6px;opacity:.8">.txt and .md files</div>
+      <ul id="files"></ul>
+    </aside>
+    <section class="editor">
+      <header>
+        <input id="title" class="title" placeholder="/path/to/file.txt" />
+        <span class="hint">Use Ctrl+S to save</span>
+        <div class="tabs">
+          <button id="tab-edit" class="tab active os-btn"><span class="iconify" data-icon="fluent:edit-20-regular"></span><span>Edit</span></button>
+          <button id="tab-preview" class="tab os-btn"><span class="iconify" data-icon="fluent:eye-20-regular"></span><span>Preview</span></button>
+          <button id="del" class="os-btn" style="background:#ef4444;color:#fff;border-color:#ef4444"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
+          <button id="save" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:save-20-regular"></span><span>Save</span></button>
+        </div>
+      </header>
+      <div class="split">
+        <div class="left">
+          <textarea id="content" placeholder="Start typing..."></textarea>
+        </div>
+        <div class="right" style="display:none">
+          <div id="preview" class="preview"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <!-- Removed external marked.js CDN; provide a minimal fallback parser -->
+  <script>
+    window.marked = {
+      parse: function(src){
+        // Very minimal markdown: headings, bold, italics, code blocks, links, paragraphs
+        let s = String(src||'');
+        s = s.replace(/^######\s*(.*)$/gm,'<h6>$1</h6>')
+             .replace(/^#####\s*(.*)$/gm,'<h5>$1</h5>')
+             .replace(/^####\s*(.*)$/gm,'<h4>$1</h4>')
+             .replace(/^###\s*(.*)$/gm,'<h3>$1</h3>')
+             .replace(/^##\s*(.*)$/gm,'<h2>$1</h2>')
+             .replace(/^#\s*(.*)$/gm,'<h1>$1</h1>');
+        s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+             .replace(/\*(.+?)\*/g,'<em>$1</em>')
+             .replace(/`([^`]+)`/g,'<code>$1</code>')
+             .replace(/\n\n+/g,'</p><p>');
+        // Links [text](url)
+        s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m,txt,url)=>`<a href="${url}" target="_blank" rel="noopener">${txt}</a>`);
+        return '<p>' + s + '</p>';
+      }
+    };
+  </script>
+  <script>
+    const $ = s=>document.querySelector(s);
+    const $$ = s=>Array.from(document.querySelectorAll(s));
+    const list = $('#files');
+    let currentPath = null;
+    let mode = 'edit';
+
+    function getCsrf(){ const name='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(name)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    function isTxtMd(name){ return /\.(txt|md)$/i.test(name||''); }
+    function basename(p){ const x=p.split('/'); return x[x.length-1]||p; }
+    function dirname(p){ if(p==='/'||!p) return '/'; return p.replace(/\/?[^\/]+$/, '')||'/'; }
+
+    async function lsTxt(root='/'){
+      const r = await fetch(`../api/fs/list?path=${encodeURIComponent(root)}`);
+      const data = await r.json();
+      const ul = list; ul.innerHTML='';
+      const entries = (data.entries||[]).filter(e=> e.is_dir || isTxtMd(e.name));
+      for(const e of entries){
+        const li = document.createElement('li');
+        if(e.is_dir){
+          li.innerHTML = `<span class="iconify" data-icon="fluent:folder-20-regular"></span><span>${e.name}</span>`;
+          li.dataset.path = e.path.endsWith('/')? e.path : (e.path+'/');
+          li.dataset.dir='1';
+        } else {
+          li.innerHTML = `<span class="iconify" data-icon="fluent:document-20-regular"></span><span>${e.name}</span>`;
+          li.dataset.path = e.path;
+          li.dataset.dir='0';
+        }
+        li.onclick = async ()=>{
+          if(li.dataset.dir==='1'){ await lsTxt(li.dataset.path); }
+          else { openFile(li.dataset.path); }
+        };
+        if(currentPath && currentPath===e.path) li.classList.add('active');
+        ul.appendChild(li);
+      }
+    }
+
+    async function openFile(path){
+      currentPath = path; $$('#files li').forEach(li=>li.classList.toggle('active', li.dataset.path===path));
+      $('#title').value = path;
+      const r = await fetch(`../api/fs/read?path=${encodeURIComponent(path)}`); const j = await r.json();
+      if(j.error){ alert(j.error); return; }
+      let content = j.is_base64? '' : (j.content||'');
+      $('#content').value = content;
+      if(mode==='preview') renderPreview();
+      // Set window title
+      try{ window.parent.postMessage({type:'webos:setTitle', title:`Notepad - ${basename(path)}`}, '*'); }catch(e){}
+    }
+
+    async function save(){
+      let path = $('#title').value.trim();
+      if(!path){ path = prompt('File path','/untitled.txt')||''; if(!path) return; $('#title').value = path; }
+      if(path.endsWith('/')){ alert('Path must be a file (not a folder)'); return; }
+      if(!isTxtMd(path)){ const ok = confirm('Save anyway? Only .txt and .md are listed'); if(!ok) return; }
+      const fd = new FormData(); fd.set('path', path); fd.set('content', $('#content').value);
+      await fetch('../api/fs/write', {method:'POST', body:fd, headers:{'X-CSRFToken': getCsrf()}});
+      currentPath = path; await lsTxt(dirname(path));
+    }
+
+    async function del(){
+      if(!currentPath) return;
+      const ok = confirm('Delete this file?'); if(!ok) return;
+      const fd = new FormData(); fd.set('path', currentPath);
+      await fetch('../api/fs/delete', {method:'POST', body:fd, headers:{'X-CSRFToken': getCsrf()}});
+      currentPath=null; $('#title').value=''; $('#content').value=''; await lsTxt('/');
+    }
+
+    function renderPreview(){
+      const src = $('#content').value;
+      const html = window.marked ? marked.parse(src) : src.replace(/\n/g,'<br>');
+      $('#preview').innerHTML = html;
+    }
+
+    function setMode(m){ mode=m; if(m==='edit'){ document.querySelector('.left').style.display='flex'; document.querySelector('.right').style.display='none'; } else { document.querySelector('.left').style.display='none'; document.querySelector('.right').style.display='flex'; renderPreview(); } $('#tab-edit').classList.toggle('active', m==='edit'); $('#tab-preview').classList.toggle('active', m==='preview'); }
+
+    // Events
+    $('#new').onclick = async ()=>{ const name = prompt('File name','untitled.md'); if(!name) return; const base = '/'; const path = (base.endsWith('/')?base:base+'/')+name; const fd=new FormData(); fd.set('path', path); fd.set('content',''); await fetch('../api/fs/write',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); await lsTxt('/'); openFile(path); };
+  $('#refresh').onclick = ()=> lsTxt('/');
+    $('#save').onclick = save; $('#del').onclick = del;
+    $('#tab-edit').onclick = ()=> setMode('edit');
+    $('#tab-preview').onclick = ()=> setMode('preview');
+    window.addEventListener('keydown', (e)=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); save(); } });
+
+    // Deep link via ?path=
+    const params = new URLSearchParams(location.search);
+    const qpath = params.get('path');
+    lsTxt('/').then(()=>{ if(qpath){ openFile(qpath); } });
+
+    // Respond to pane toggle from shell (consistent with other apps)
+    window.addEventListener('message', (ev)=>{
+      const msg = ev.data||{};
+      if(msg.type==='webos:togglePane'){
+        document.body.classList.toggle('pane-collapsed');
+      }
+    });
+  </script>
+</body></html>

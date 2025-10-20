@@ -1,0 +1,140 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<!-- Removed external Iconify CDN. Icons fallback via CSS/emoji. -->
+<style>
+.wrap{display:flex;height:100vh}
+.side{width:220px;border-right:1px solid var(--border);padding:8px;overflow:auto;background:rgba(255,255,255,.04);transition:width var(--anim-med,.18s) ease}
+.side .item{padding:8px;border-radius:10px;cursor:pointer}
+.side .item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;cursor:pointer;transition:background var(--anim-fast,.14s) ease, transform var(--anim-fast,.14s) ease}
+.side .item.active{background:rgba(255,255,255,.08)}
+.side .item.active .txt{font-weight:700}
+.side .item .ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px}
+.side .item .txt{transition:opacity .15s ease}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.toolbar{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}
+.card{border:1px solid var(--border);border-radius:10px;padding:10px;background:rgba(255,255,255,.04)}
+.list{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow:auto}
+.item{display:flex;gap:8px;align-items:center}
+.item input{flex:1}
+.pane-collapsed .side{width:64px}
+.pane-collapsed .side .item{justify-content:center;gap:0}
+.pane-collapsed .side .item .ico{width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#0b1220;display:inline-flex;align-items:center;justify-content:center}
+body.theme-light .pane-collapsed .side .item .ico{background:#ffffff}
+.pane-collapsed .side .item .txt{opacity:0; width:0; overflow:hidden}
+.pane-collapsed .side .item:hover{transform:translateY(-1px)}
+@media (max-width:720px){ .columns{grid-template-columns:1fr} }
+</style></head>
+<body class="app">
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="/static/webos/js/icons.js"></script>
+  <script src="/static/webos/js/apps-common.js"></script>
+  <div class="wrap">
+    <aside class="side app-card">
+  <div class="item active" data-sec="send"><span class="ico"><span class="iconify" data-icon="fluent:send-20-regular"></span></span><span class="txt">Send files</span></div>
+  <div class="item" data-sec="receive"><span class="ico"><span class="iconify" data-icon="fluent:arrow-download-20-regular"></span></span><span class="txt">Receive files</span></div>
+  <div class="item" data-sec="history"><span class="ico"><span class="iconify" data-icon="fluent:history-20-regular"></span></span><span class="txt">History</span></div>
+    </aside>
+    <section class="main">
+      <div class="toolbar app-card">
+        <div id="toolbar-send" class="row" style="display:flex;gap:6px;align-items:center">
+          <label>My code</label>
+          <input id="my-code" class="input" placeholder="default" style="width:160px">
+          <button id="save-publish" class="btn">Publish</button>
+        </div>
+        <div id="toolbar-receive" class="row" style="display:none;margin-left:auto;gap:6px;align-items:center">
+          <label>Receive from</label>
+          <input id="from-username" class="input" placeholder="username" style="width:160px">
+          <input id="from-code" class="input" placeholder="code (default)" style="width:160px">
+          <button id="receive" class="btn">Receive</button>
+        </div>
+      </div>
+      <div id="view-send" class="columns">
+        <div class="card">
+          <h3>Items to share</h3>
+          <div id="items" class="list"></div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button id="add-text" class="btn">Add Text</button>
+            <input type="file" id="add-file" style="display:none">
+            <button id="pick-file" class="btn">Add File</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>My current items</h3>
+          <div id="current" class="list"></div>
+        </div>
+      </div>
+      <div id="view-receive" class="columns" style="display:none">
+        <div class="card" style="grid-column:1/-1">
+          <h3>Receive</h3>
+          <div class="muted">Enter a username and optional code, then click Receive to pull items shared for you. Files will be saved into /Shared/&lt;your-username&gt;.</div>
+        </div>
+      </div>
+      <div id="view-history" class="columns" style="display:none">
+        <div class="card" style="grid-column:1/-1">
+          <h3>History</h3>
+          <div id="history-list" class="list"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+    const $=s=>document.querySelector(s);
+    function getCsrf(){ const n='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
+  const items=[]; let cur='send';
+    function render(){ const host=$('#items'); host.innerHTML=''; items.forEach((it,i)=>{
+      const row=document.createElement('div'); row.className='item';
+      row.innerHTML=`<input class="input" value="${it.name}" placeholder="name"><button class="btn" data-act="del">Remove</button>`;
+      row.querySelector('input').onchange=(e)=>{ it.name=e.target.value; };
+      row.querySelector('[data-act="del"]').onclick=()=>{ items.splice(i,1); render(); };
+      host.appendChild(row);
+    }); }
+    async function loadCurrent(){ const code=$('#my-code').value.trim()||'default'; const r=await fetch(`../api/sharedrop/list?code=${encodeURIComponent(code)}`); const j=await r.json(); const host=$('#current'); host.innerHTML=''; (j.items||[]).forEach(it=>{ const row=document.createElement('div'); row.className='item'; row.innerHTML=`<span>${it.name}</span>`; host.appendChild(row); }); }
+  async function publish(){ const code=$('#my-code').value.trim()||'default'; const payload=new FormData(); payload.set('code', code); payload.set('items', JSON.stringify(items)); const r=await fetch('../api/sharedrop/publish',{method:'POST', body:payload, headers:{'X-CSRFToken':getCsrf()}}); if(!r.ok){ alert('Publish failed'); return; } loadCurrent(); loadHistory(); }
+    async function receive(){ const user=$('#from-username').value.trim(); if(!user) return alert('Enter username'); const code=$('#from-code').value.trim()||'default'; const fd=new FormData(); fd.set('username', user); fd.set('code', code); const r=await fetch('../api/sharedrop/receive',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); const j=await r.json(); if(!r.ok){ alert(j.error||'Receive failed'); return; } alert('Saved: '+(j.saved||[]).join('\n')); }
+    function addText(){ const name=prompt('File name','note.txt')||'note.txt'; const content=prompt('Text content',''); if(content===null) return; items.push({name, content, is_base64:false}); render(); }
+    function addFile(){ const inp=$('#add-file'); inp.onchange=async()=>{ if(!inp.files.length) return; const f=inp.files[0]; const buf=await f.arrayBuffer(); const b64=btoa(String.fromCharCode(...new Uint8Array(buf))); items.push({name:f.name, content:b64, is_base64:true}); inp.value=''; render(); }; inp.click(); }
+    $('#add-text').onclick=addText; $('#pick-file').onclick=addFile; $('#save-publish').onclick=publish; $('#receive').onclick=receive; $('#my-code').addEventListener('change', loadCurrent);
+    loadCurrent(); render();
+
+    // Pane navigation
+    const side=document.querySelector('.side');
+    function updateSideIcons(){ side.querySelectorAll('.item').forEach(it=>{ const ico=it.querySelector('.iconify'); if(!ico) return; let id=ico.getAttribute('data-icon')||''; if(it.classList.contains('active')) id=id.replace('-regular','-filled'); else id=id.replace('-filled','-regular'); ico.setAttribute('data-icon', id); }); }
+    side.addEventListener('click', (e)=>{
+      const it=e.target.closest('.item'); if(!it) return; document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n===it)); cur=it.dataset.sec; updateSideIcons();
+      const send = cur==='send'; const recv = cur==='receive';
+      $('#toolbar-send').style.display = send ? 'flex' : 'none';
+      $('#toolbar-receive').style.display = recv ? 'flex' : 'none';
+      $('#view-send').style.display = send ? '' : 'none';
+      $('#view-receive').style.display = recv ? '' : 'none';
+      $('#view-history').style.display = cur==='history' ? '' : 'none';
+      if(cur==='history'){ loadHistory(); }
+    });
+    updateSideIcons();
+
+    async function loadHistory(){
+      try{
+        const r=await fetch('../api/sharedrop/history');
+        const j=await r.json();
+        const host=$('#history-list'); host.innerHTML='';
+        (j.items||[]).forEach(h=>{
+          const row=document.createElement('div'); row.className='item';
+          row.innerHTML = `<span>${h.when} — <b>${h.dir}</b> ${h.name} ${h.code?('('+h.code+')'):''}</span>`;
+          host.appendChild(row);
+        });
+      }catch{}
+    }
+    // Support pane toggle and back from shell
+    window.addEventListener('message', (ev)=>{
+      const msg = ev.data||{};
+      if(msg.type==='webos:togglePane'){
+        document.body.classList.toggle('pane-collapsed');
+      } else if(msg.type==='webos:navigate' && msg.action==='back'){
+        // Switch back to Send tab
+        cur='send'; document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n.dataset.sec==='send'));
+        $('#toolbar-send').style.display='flex'; $('#toolbar-receive').style.display='none'; $('#view-send').style.display=''; $('#view-receive').style.display='none';
+      }
+    });
+  </script>
+</body></html>

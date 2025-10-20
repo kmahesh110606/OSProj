@@ -1,0 +1,261 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<!-- Removed external Iconify CDN. Icons fallback via CSS/emoji. -->
+<style>
+.wrap{display:flex}
+.side{width:280px;border-right:1px solid var(--border);padding:8px;overflow:auto;background:rgba(255,255,255,.04)}
+.side h3{margin:6px 0 8px}
+/* Tree styles */
+.tree{list-style:none;margin:0;padding-left:6px}
+.tree .node{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;cursor:pointer;user-select:none}
+.tree .node:hover{background:rgba(255,255,255,.06)}
+.tree .node.active{background:rgba(255,255,255,.10)}
+.tree .toggle{width:16px;display:inline-flex;align-items:center;justify-content:center;opacity:.8}
+.tree .label{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree ul{list-style:none;margin:0;padding-left:16px}
+.tree .icon{width:18px;display:inline-flex;align-items:center;justify-content:center}
+/* Light theme hover contrast */
+body.theme-light .tree .node:hover{background:rgba(0,0,0,.06)}
+body.theme-light .tree .node.active{background:rgba(0,0,0,.08)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.bar{display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--border)}
+.bar input{flex:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,170px);gap:16px;padding:16px;overflow:auto;flex:1;justify-content:flex-start}
+.item{background:rgba(31,41,55,.6);backdrop-filter:blur(8px);border:1px solid #374151;border-radius:8px;padding:12px;cursor:pointer;width:160px;height:160px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.name{margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item img{width:100%;height:100px;object-fit:cover;border-radius:6px;display:block}
+.item .thumb{width:100%;height:100px;display:flex;align-items:center;justify-content:center;font-size:42px}
+.item.selected{transform:scale(1.03);box-shadow:0 0 0 2px rgba(96,165,250,.8) inset}
+.item.selected .name{font-weight:600}
+.ribbon{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;padding:8px;border-bottom:1px solid #374151;background:var(--surface);backdrop-filter:blur(14px)}
+.rb-more{margin-left:auto;position:relative}
+.rb-menu{position:absolute;right:0;top:100%;margin-top:6px;z-index:10;display:none;min-width:180px}
+.rb-menu .menu-btn{display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:8px;border-radius:8px}
+.ribbon .btn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:80px}
+.ribbon .btn .iconify{font-size:20px}
+.ctx{position:absolute;display:none;z-index:10;background:rgba(31,41,55,.9);backdrop-filter:blur(10px);border:1px solid #374151;border-radius:10px;padding:6px;min-width:180px}
+.ctx .menu-btn{display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:8px;border-radius:8px}
+.ctx .menu-btn .iconify{font-size:18px;opacity:.9}
+.ctx .menu-btn:hover{background:rgba(255,255,255,.06)}
+.pane-collapsed .side{display:none}
+.pane-collapsed .main{width:100%}
+/* Only side and grid scroll; app fills viewport */
+body.app{height:100vh;display:flex;flex-direction:column}
+.wrap{flex:1;overflow:hidden}
+.side{overflow:auto}
+.main{overflow:hidden}
+.grid{overflow:auto}
+@media (max-width:720px){ .side{width:200px} }
+</style></head>
+<body class="app">
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="/static/webos/js/icons.js"></script>
+  <script src="/static/webos/js/apps-common.js"></script>
+  <div class="ribbon app-card">
+    <button id="btn-download" class="btn"><span class="iconify" data-icon="fluent:arrow-download-20-regular"></span><span>Download</span></button>
+    <button id="btn-rename" class="btn"><span class="iconify" data-icon="fluent:rename-20-regular"></span><span>Rename</span></button>
+    <button id="btn-cut" class="btn"><span class="iconify" data-icon="fluent:cut-20-regular"></span><span>Cut</span></button>
+    <button id="btn-copy" class="btn"><span class="iconify" data-icon="fluent:copy-20-regular"></span><span>Copy</span></button>
+    <button id="btn-paste" class="btn"><span class="iconify" data-icon="fluent:clipboard-paste-20-regular"></span><span>Paste</span></button>
+    <button id="btn-delete" class="btn"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
+    <div class="rb-more">
+      <button id="rb-more" class="btn"><span class="iconify" data-icon="fluent:more-horizontal-20-regular"></span><span>More</span></button>
+      <menu id="rb-menu" class="app-card ctx rb-menu"></menu>
+    </div>
+  </div>
+  <div class="wrap">
+    <aside class="side app-card" id="pane">
+      <h3>Files</h3>
+      <ul id="tree-root" class="tree"></ul>
+    </aside>
+    <section class="main">
+      <div class="bar app-card">
+        <button id="up" class="btn">Up</button>
+        <input id="path" class="input" value="/" />
+        <button id="mk" class="btn">New Folder</button>
+        <button id="newfile" class="btn">New File</button>
+        <input type="file" id="upload-input" style="display:none" />
+        <button id="upload" class="btn">Upload</button>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+  </div>
+  <menu id="ctx" class="app-card ctx">
+    <button class="menu-btn" data-act="download"><span class="iconify" data-icon="fluent:arrow-download-20-regular"></span><span>Download</span></button>
+    <button class="menu-btn" data-act="rename"><span class="iconify" data-icon="fluent:rename-20-regular"></span><span>Rename</span></button>
+    <button class="menu-btn" data-act="cut"><span class="iconify" data-icon="fluent:cut-20-regular"></span><span>Cut</span></button>
+    <button class="menu-btn" data-act="copy"><span class="iconify" data-icon="fluent:copy-20-regular"></span><span>Copy</span></button>
+    <button class="menu-btn" data-act="paste"><span class="iconify" data-icon="fluent:clipboard-paste-20-regular"></span><span>Paste</span></button>
+    <button class="menu-btn" data-act="delete" style="color:#ef4444"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
+  </menu>
+  <script>
+  const $=s=>document.querySelector(s);
+    let cwd='/';
+    let selected=null; let selectedPath=null; let clipboard=null; // {op:'copy'|'move', src}
+    function hideCtx(){ const m=$('#ctx'); m.style.display='none'; }
+    function showCtx(x,y){ const m=$('#ctx'); m.style.left=x+'px'; m.style.top=y+'px'; m.style.display='block'; }
+    document.addEventListener('click', (e)=>{ const m=$('#ctx'); if(m.style.display==='block' && !m.contains(e.target)) hideCtx(); });
+    async function ls(){
+      const r = await fetch(`../api/fs/list?path=${encodeURIComponent(cwd)}`);
+      const data = await r.json();
+  const g=$('#grid'); g.innerHTML='';
+      (data.entries||[]).forEach(e=>{
+        const d=document.createElement('div'); d.className='item';
+        d.dataset.path=e.path; d.dataset.dir=e.is_dir? '1':'0';
+        d.dataset.name=e.name;
+        if(!e.is_dir && /(png|jpg|jpeg|gif|webp|bmp)$/i.test(e.name)){
+          // image thumb
+          fetch(`../api/fs/read?path=${encodeURIComponent(e.path)}`).then(r=>r.json()).then(j=>{
+            const url = j.is_base64? `data:;base64,${j.content}` : `data:text/plain;base64,${btoa(j.content||'')}`;
+            d.innerHTML=`<img src="${url}"><div class="name">${e.name}</div>`;
+          });
+        } else if(!e.is_dir && /\.wbdz$/i.test(e.name)){
+          // whiteboard preview if available
+          fetch(`../api/fs/read?path=${encodeURIComponent(e.path)}`).then(r=>r.json()).then(j=>{
+            try{
+              const data = typeof j.content==='string' ? JSON.parse(j.content) : j.content;
+              const b64 = data && data.preview_b64_png;
+              if(b64){ d.innerHTML=`<img src="data:image/png;base64,${b64}"><div class="name">${e.name}</div>`; return; }
+            }catch{}
+            d.innerHTML=`<div class="thumb">📝</div><div class="name">${e.name}</div>`;
+          }).catch(()=>{ d.innerHTML=`<div class="thumb">📝</div><div class="name">${e.name}</div>`; });
+        } else {
+          d.innerHTML=`<div class="thumb">${e.is_dir?'📁':'📄'}</div><div class="name">${e.name}</div>`;
+        }
+        d.addEventListener('click', ()=>{
+          // select only
+          document.querySelectorAll('.item.selected').forEach(el=>el.classList.remove('selected'));
+          d.classList.add('selected'); selected=e; selectedPath=e.path;
+        });
+        d.addEventListener('dblclick', ()=>{
+          if(e.is_dir){ cwd=e.path; $('#path').value=cwd; ls(); }
+          else {
+            if(/\.(png|jpg|jpeg|gif|webp|bmp)$/i.test(e.name)){ openImage(e.path); }
+            else if(/\.wbdz$/i.test(e.name)){
+              try{ window.parent.postMessage({type:'webos:launch', app:{slug:'whiteboard', kind:'builtin', path:`apps/whiteboard`}, params:{path:e.path}, focus:true}, '*'); }catch(err){ openFile(e.path); }
+            }
+            else { openFile(e.path); }
+          }
+        });
+        d.oncontextmenu=(ev)=>{ ev.preventDefault(); selected=e; showCtx(ev.clientX, ev.clientY); };
+        if(selectedPath && selectedPath===e.path){ d.classList.add('selected'); }
+        g.appendChild(d);
+
+      });
+    }
+    // Build a lazy tree in the left pane showing full hierarchy
+    const treeRoot = document.getElementById('tree-root');
+    async function buildTree(){
+      treeRoot.innerHTML='';
+      const rootNode = await makeTreeNode('/', window.USERNAME ? `${window.USERNAME}'s Workspace` : 'This PC', true);
+      treeRoot.appendChild(rootNode.el);
+      // Auto-expand first level
+      await rootNode.expand();
+    }
+    async function makeTreeNode(path, name, isDir){
+      const el = document.createElement('li');
+      const row = document.createElement('div'); row.className='node';
+      const tog = document.createElement('span'); tog.className='toggle'; tog.textContent = isDir ? '▸' : '';
+      const ico = document.createElement('span'); ico.className='icon'; ico.textContent = isDir ? '📁' : '📄';
+  const lab = document.createElement('span'); lab.className='label'; lab.textContent = (path==='/'? (window.USERNAME ? `${window.USERNAME}'s Workspace` : 'This PC') : (name||path.split('/').pop()||'/'));
+      row.appendChild(tog); row.appendChild(ico); row.appendChild(lab); el.appendChild(row);
+      const children = document.createElement('ul'); el.appendChild(children);
+      let expanded=false, loaded=false;
+      async function load(){
+        if(loaded || !isDir) return; loaded = true; children.innerHTML='';
+        const r = await fetch(`../api/fs/list?path=${encodeURIComponent(path)}`); const j = await r.json();
+        (j.entries||[])
+          .filter(e => e && e.path !== path)
+          .sort((a,b)=> (b.is_dir?-1:1) - (a.is_dir?-1:1) || a.name.localeCompare(b.name))
+          .forEach(async e=>{
+          const node = await makeTreeNode(e.path, e.name, e.is_dir);
+          children.appendChild(node.el);
+        });
+      }
+      async function expand(){ if(!isDir) return; await load(); expanded=true; children.style.display='block'; tog.textContent='▾'; }
+      function collapse(){ if(!isDir) return; expanded=false; children.style.display='none'; tog.textContent='▸'; }
+      row.addEventListener('click', async ()=>{
+        document.querySelectorAll('.tree .node.active').forEach(n=>n.classList.remove('active'));
+        row.classList.add('active');
+        selected = { name, path, is_dir: isDir }; selectedPath = path; $('#path').value = path; const idx = path.lastIndexOf('/'); cwd = isDir ? path : (idx>0 ? path.substring(0, idx) : '/');
+        if(isDir){ await expand(); ls(); } else { openFile(path); }
+      });
+      tog.addEventListener('click', async (ev)=>{ ev.stopPropagation(); if(expanded) collapse(); else await expand(); });
+      // expose helpers
+      return { el, expand, collapse };
+    }
+    async function mkdir(){
+      const name=prompt('Folder name','New Folder'); if(!name) return;
+      const fd=new FormData(); fd.set('path',cwd); fd.set('name',name);
+      await fetch('../api/fs/mkdir',{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrf()}}); ls();
+    }
+    async function newFile(){
+      const name=prompt('File name','untitled.txt'); if(!name) return;
+      const path=(cwd.endsWith('/')?cwd:cwd+'/')+name;
+      const fd=new FormData(); fd.set('path',path); fd.set('content','');
+      await fetch('../api/fs/write',{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrf()}}); ls();
+    }
+    async function openFile(path){
+      if(/\.(txt|md)$/i.test(path)){
+        // Ask the desktop parent to open the text editor app with the file path
+        try{ window.parent.postMessage({type:'webos:launch', app:{slug:'notepad', kind:'builtin', path:`apps/notepad`}, params:{path:path}, focus:true}, '*'); }catch(e){ console.error(e); }
+        return;
+      }
+      // Fallback: show basic prompt editor
+      const r=await fetch(`../api/fs/read?path=${encodeURIComponent(path)}`); const data=await r.json();
+      if(data.error){ alert(data.error); return; }
+      const content = prompt('Edit file:', data.content||'');
+      if(content===null) return;
+      const fd=new FormData(); fd.set('path',path); fd.set('content',content);
+      await fetch('../api/fs/write',{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrf()}}); ls();
+    }
+    function openImage(path){
+      // open Gallery and select this image
+      try{ window.parent.postMessage({type:'webos:launch', app:{slug:'gallery', kind:'builtin', path:`apps/gallery`}, params:{path:path}, focus:true}, '*'); }catch(e){ console.error(e); }
+    }
+    function getCsrf(){ const name='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(name)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    async function upload(){ const inp=$('#upload-input'); inp.onchange=async()=>{ if(!inp.files.length) return; const f=inp.files[0]; const fd=new FormData(); fd.set('path', cwd); fd.set('file', f); await fetch('../api/fs/upload',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); inp.value=''; ls(); }; inp.click(); }
+    async function download(){ if(!selected) return; window.location.href = `../api/fs/download?path=${encodeURIComponent(selected.path)}`; }
+    async function doRename(){ if(!selected) return; const newName = prompt('New name', selected.name); if(!newName) return; const fd=new FormData(); fd.set('path', selected.path); fd.set('name', newName); await fetch('../api/fs/rename',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); ls(); }
+    function cut(){ if(!selected) return; clipboard={op:'move', src:selected.path}; }
+    function copy(){ if(!selected) return; clipboard={op:'copy', src:selected.path}; }
+    async function paste(){ if(!clipboard) return; const target = cwd.endsWith('/')? cwd : (cwd+'/'); const fd=new FormData(); fd.set('src', clipboard.src); fd.set('dst', target); const url = clipboard.op==='move'? '../api/fs/move' : '../api/fs/copy'; await fetch(url,{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); if(clipboard.op==='move') clipboard=null; ls(); }
+    async function remove(){ if(!selected) return; const ok=confirm('Delete?'); if(!ok) return; const fd=new FormData(); fd.set('path', selected.path); await fetch('../api/fs/delete',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); ls(); }
+    $('#mk').onclick=mkdir; $('#newfile').onclick=newFile; $('#upload').onclick=upload; $('#up').onclick=()=>{ if(cwd!='/'){ cwd=cwd.replace(/\/?[^\/]+\/?$/,'/')||'/'; $('#path').value=cwd; ls(); } };
+    $('#btn-download').onclick=download; $('#btn-rename').onclick=doRename; $('#btn-cut').onclick=cut; $('#btn-copy').onclick=copy; $('#btn-paste').onclick=paste; $('#btn-delete').onclick=remove;
+    $('#ctx').addEventListener('click', (e)=>{ const act=e.target?.dataset?.act; if(!act) return; hideCtx(); if(act==='download') download(); else if(act==='rename') doRename(); else if(act==='cut') cut(); else if(act==='copy') copy(); else if(act==='paste') paste(); else if(act==='delete') remove(); });
+    $('#path').addEventListener('change',()=>{ cwd=$('#path').value||'/'; ls(); });
+  // Initial load
+  buildTree();
+  ls();
+
+    // Ribbon overflow -> More menu
+    const rb=document.querySelector('.ribbon'); const rbMore=document.getElementById('rb-more'); const rbMenu=document.getElementById('rb-menu');
+    function layoutRibbon(){ if(!rb || !rbMore || !rbMenu) return; rbMenu.innerHTML='';
+      const actions=[...rb.querySelectorAll('.btn')].filter(b=>b.id && b.id!=='rb-more'); actions.forEach(b=>{ b.style.display=''; }); rbMore.style.display='none';
+      const avail = rb.clientWidth - rbMore.offsetWidth - 16; let used=0; const hidden=[];
+      actions.forEach(b=>{ const w = b.offsetWidth + 12; if(used + w > avail){ hidden.push(b); } else { used += w; } });
+      if(hidden.length){ rbMore.style.display='inline-flex'; rbMenu.innerHTML=''; hidden.forEach(b=>{ b.style.display='none'; const item=document.createElement('button'); item.className='menu-btn'; item.textContent = b.textContent || b.id; item.addEventListener('click', ()=>{ b.click(); rbMenu.style.display='none'; }); rbMenu.appendChild(item); }); }
+    }
+    window.addEventListener('resize', layoutRibbon);
+    setTimeout(layoutRibbon, 50);
+    rbMore?.addEventListener('click', ()=>{ rbMenu.style.display = rbMenu.style.display==='block'? 'none':'block'; });
+    document.addEventListener('click', (e)=>{ if(rbMenu && !rb.contains(e.target)) rbMenu.style.display='none'; });
+
+    // Support pane toggle and back from shell
+    window.addEventListener('message', (ev)=>{
+      const msg = ev.data||{};
+      if(msg.type==='webos:togglePane'){
+        document.body.classList.toggle('pane-collapsed');
+      } else if(msg.type==='webos:navigate' && msg.action==='back'){
+        // navigate up
+        if(cwd!=='/'){ cwd=cwd.replace(/\/?[^\/]+\/?$/,'/')||'/'; $('#path').value=cwd; ls(); }
+      } else if(msg.type==='webos:state' && msg.state && msg.state.user){
+        window.USERNAME = msg.state.user.username;
+        const rootLabel = document.querySelector('#tree-root > li > .node .label');
+        if(rootLabel){ rootLabel.textContent = `${window.USERNAME}'s Workspace`; }
+      }
+    });
+  </script>
+</body></html>

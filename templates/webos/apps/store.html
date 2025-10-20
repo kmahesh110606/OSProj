@@ -1,0 +1,146 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<!-- Removed external Iconify CDN. Icons fallback via CSS/emoji. -->
+<style>
+.wrap{display:flex;height:100vh}
+.side{width:220px;border-right:1px solid var(--border);padding:8px;overflow:auto;background:rgba(255,255,255,.04);transition:width var(--anim-med,.18s) ease}
+.side .item{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;cursor:pointer;transition:background var(--anim-fast,.14s) ease, transform var(--anim-fast,.14s) ease}
+.side .item.active{background:rgba(255,255,255,.08)}
+.side .item.active .txt{font-weight:700}
+.side .item .ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px}
+.side .item .txt{transition:opacity .15s ease}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.header{display:flex;gap:12px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:12px}
+.card{border:1px solid var(--border);border-radius:10px;padding:12px;background:rgba(255,255,255,.04);display:flex;flex-direction:column;gap:8px}
+.card .title{font-weight:600}
+.card .meta{opacity:.8;font-size:12px}
+.card .title img.app-img{width:20px;height:20px;object-fit:contain;vertical-align:middle;border-radius:4px;margin-right:4px}
+.actions{display:flex;gap:8px}
+.form{display:flex;gap:8px;padding:8px;border-top:1px solid var(--border)}
+.form input{min-width:120px}
+.pane-collapsed .side{width:64px}
+.pane-collapsed .side .item{justify-content:center}
+.pane-collapsed .side .item .ico{width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#0b1220;display:inline-flex;align-items:center;justify-content:center}
+body.theme-light .pane-collapsed .side .item .ico{background:#ffffff}
+.pane-collapsed .side .item .txt{opacity:0; width:0; overflow:hidden}
+.pane-collapsed .side .item:hover{transform:translateY(-1px)}
+@media (max-width:720px){ .side{width:180px} }
+</style></head>
+<body class="app">
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="/static/webos/js/icons.js"></script>
+  <script src="/static/webos/js/apps-common.js"></script>
+  <div class="wrap">
+    <aside class="side app-card" id="pane">
+      <div class="item active" data-sec="browse"><span class="ico"><span class="iconify" data-icon="fluent:apps-list-20-regular"></span></span><span class="txt">Browse</span></div>
+      <div class="item" data-sec="installed"><span class="ico"><span class="iconify" data-icon="fluent:checkmark-circle-20-regular"></span></span><span class="txt">Installed</span></div>
+      <div class="item" data-sec="request"><span class="ico"><span class="iconify" data-icon="fluent:mail-20-regular"></span></span><span class="txt">Request app</span></div>
+    </aside>
+    <section class="main">
+      <div class="header app-card">
+        <h3 id="title" style="margin:0">Browse</h3>
+        <div style="margin-left:auto"></div>
+        <button id="refresh" class="btn"><span class="iconify" data-icon="fluent:arrow-sync-20-regular"></span><span>Refresh</span></button>
+      </div>
+      <div id="grid" class="grid"></div>
+    </section>
+  </div>
+  <script>
+    const $=s=>document.querySelector(s);
+    function getCsrf(){ const n='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    let apps=[]; let cur='browse';
+  async function fetchApps(){ const r=await fetch('/os/api/store/apps'); const j=await r.json(); apps = j.apps||[]; render(); }
+    function render(){ const g=$('#grid'); g.innerHTML=''; const title=$('#title');
+      if(cur==='request'){
+        title.textContent='Request app';
+        // Render request form inline
+        const wrap=document.createElement('div'); wrap.className='form app-card'; wrap.style.gridColumn='1 / -1';
+        wrap.innerHTML = `
+          <input id="req-name" class="input" placeholder="App name">
+          <input id="req-url" class="input" placeholder="Website or Store URL (optional)">
+          <input id="req-notes" class="input" placeholder="Notes (optional)">
+          <button id="request" class="btn"><span class="iconify" data-icon="fluent:send-20-regular"></span><span>Send request</span></button>
+        `;
+        g.appendChild(wrap);
+        const reqBtn = document.getElementById('request'); if(reqBtn){ reqBtn.onclick = sendRequest; }
+        return;
+      } else { title.textContent=cur==='installed'?'Installed':'Browse'; }
+      // Decide which set to show
+      let list = apps;
+      if(cur==='installed'){
+        list = apps.filter(a=> a.installed);
+      } else if(cur==='browse'){
+        // Browse only PWAs (admin adds over time)
+        list = apps.filter(a=> a.kind === 'pwa');
+      }
+      list.forEach(a=>{
+      const card=document.createElement('div'); card.className='card';
+      const iconHtml = (a.icon && a.icon.includes(':'))
+        ? `<span class="iconify" data-icon="${a.icon}"></span>`
+        : (a.icon && (a.icon.startsWith('/') || a.icon.startsWith('http'))
+          ? `<img class="app-img" src="${a.icon}" alt="${a.name}">`
+          : (a.kind === 'pwa'
+            ? `<span class="iconify" data-icon="fluent:globe-20-regular"></span>`
+            : `<span class="iconify" data-icon="fluent:app-folder-20-regular"></span>`));
+      card.innerHTML=`<div class="title">${iconHtml} ${a.name}</div><div class="meta">${a.kind.toUpperCase()} • ${a.slug} • by ${a.submitted_by||'—'}</div>`;
+      const actions=document.createElement('div'); actions.className='actions';
+      if(!a.builtin){
+        const btnInst=document.createElement('button'); btnInst.className='btn'; btnInst.textContent=a.installed? 'Uninstall' : 'Install';
+        btnInst.onclick=async()=>{
+          const fd=new FormData(); fd.set('app_id', a.id);
+          const url = a.installed? '/os/api/store/uninstall':'/os/api/store/install';
+          const r = await fetch(url,{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
+          try{ window.parent.postMessage({type:'webos:appsChanged'}, '*'); }catch(e){}
+          await fetchApps();
+        };
+        actions.appendChild(btnInst);
+      } else {
+        const lbl=document.createElement('span'); lbl.className='btn'; lbl.style.opacity='.7'; lbl.textContent='Built-in'; actions.appendChild(lbl);
+      }
+      if(a.launch_url){ const open=document.createElement('button'); open.className='btn'; open.textContent='Open'; open.onclick=()=>{
+  try{ window.parent.postMessage({type:'webos:launch', app:{slug:a.slug, kind:a.kind, url:a.launch_url, proxy:true, icon:a.icon}, focus:true}, '*'); }catch(e){}
+      }; actions.appendChild(open); }
+      card.appendChild(actions); g.appendChild(card);
+      });
+    }
+  async function sendRequest(){
+    const name=$('#req-name').value.trim(); const url=$('#req-url').value.trim(); const notes=$('#req-notes').value.trim();
+    if(!name){ alert('Please enter the app name'); return; }
+    const message = `App Request\nName: ${name}\nURL: ${url||'-'}\nNotes: ${notes||'-'}`;
+    const fd=new FormData(); fd.set('category','feature'); fd.set('message', message);
+    const r=await fetch('/os/api/feedback',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
+    const j=await r.json(); if(!r.ok){ alert(j.error||'Failed to send'); return; }
+    alert('Thanks! Your app request has been sent.');
+    $('#req-name').value=''; $('#req-url').value=''; $('#req-notes').value='';
+  }
+  $('#refresh').onclick=fetchApps;
+    const side=document.querySelector('.side');
+    function updateSideIcons(){
+      side.querySelectorAll('.item').forEach(it=>{
+        const sec=it.dataset.sec; const ico=it.querySelector('.iconify'); if(!ico) return;
+        let id=ico.getAttribute('data-icon')||'';
+        // map regular->filled for active selection when available
+        if(it.classList.contains('active')) id=id.replace('-regular','-filled'); else id=id.replace('-filled','-regular');
+        ico.setAttribute('data-icon', id);
+      });
+    }
+    side.addEventListener('click', (e)=>{
+      const it=e.target.closest('.item'); if(!it) return; document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n===it)); cur=it.dataset.sec; updateSideIcons(); render();
+    });
+    updateSideIcons();
+    fetchApps();
+
+    // Support pane toggle and back from shell
+    window.addEventListener('message', (ev)=>{
+      const msg = ev.data||{};
+      if(msg.type==='webos:togglePane'){
+        document.body.classList.toggle('pane-collapsed');
+      } else if(msg.type==='webos:navigate' && msg.action==='back'){
+        // Optional: navigate to All apps
+        cur='all'; document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n.dataset.sec==='all')); render();
+      }
+    });
+  </script>
+</body></html>

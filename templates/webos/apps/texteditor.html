@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<style>
+body.app{display:flex;flex-direction:column;height:100vh}
+header{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
+header .path{flex:1}
+textarea{flex:1;padding:12px;border:0;outline:0;font-family:Consolas,monospace;font-size:14px;background:transparent;color:inherit}
+</style></head>
+<body class="app">
+  <header class="app-card">
+    <input id="path" class="input path" placeholder="/path/to/file.txt" />
+    <button id="save" class="btn">Save</button>
+  </header>
+  <textarea id="content" placeholder="Start typing..."></textarea>
+  <script>
+    const $=s=>document.querySelector(s);
+    function getCsrf(){ const name='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(name)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    function qs(k){ const u=new URL(window.location.href); return u.searchParams.get(k)||''; }
+    async function loadFile(){ const p = qs('path'); if(!p) return; $('#path').value=p; const r=await fetch(`../api/fs/read?path=${encodeURIComponent(p)}`); const j=await r.json(); if(!j.error){ $('#content').value=j.content||''; } }
+    async function saveFile(){ const p=$('#path').value.trim(); if(!p||p.endsWith('/')) return alert('Enter a valid file path'); const fd=new FormData(); fd.set('path',p); fd.set('content',$('#content').value); await fetch('../api/fs/write',{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrf()}}); alert('Saved'); }
+    document.getElementById('save').onclick=saveFile;
+    loadFile();
+  </script>
+</body></html>

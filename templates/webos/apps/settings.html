@@ -1,0 +1,286 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<!-- Removed external Iconify CDN. Icons fallback via CSS/emoji. -->
+<style>
+.wrap{display:flex;height:100vh}
+.side{width:240px;border-right:1px solid var(--border);padding:12px;overflow:auto;transition:width var(--anim-med,var(--anim, .18s)) ease}
+.side .item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer;transition:background var(--anim-fast,.14s) ease, transform var(--anim-fast,.14s) ease}
+.side .item .ico{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px}
+.side .item .iconify{opacity:.9; font-size:20px; width:20px; height:20px; line-height:1}
+.side .item.active{background:rgba(255,255,255,.08)}
+.side .item.active .txt{font-weight:700}
+.side .item .txt{transition:opacity var(--anim-fast,.14s) ease}
+/* Collapsed pane: fixed square icon tiles */
+.pane-collapsed .side{width:64px}
+.pane-collapsed .side .item{justify-content:center;gap:0;padding:10px;border-radius:12px}
+.pane-collapsed .side .item .ico{width:36px;height:36px;border:1px solid var(--border);border-radius:10px;background:#0b1220;display:inline-flex;align-items:center;justify-content:center}
+body.theme-light .pane-collapsed .side .item .ico{background:#ffffff}
+.pane-collapsed .side .item .iconify{font-size:20px;width:20px;height:20px}
+.pane-collapsed .side .item .txt{opacity:0;width:0;overflow:hidden}
+.pane-collapsed .side .item:hover{transform:translateY(-1px)}
+.main{flex:1;display:flex;flex-direction:column;overflow:auto}
+.section{padding:14px}
+.card{background:var(--surface);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}
+label{display:flex;align-items:center;gap:8px}
+input[type="checkbox"]{transform:scale(1.2)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.muted{opacity:.8}
+.title{font-size:18px;font-weight:700;margin:0 0 8px 0}
+.kv{display:flex;gap:10px;align-items:center}
+.kv .k{min-width:160px;opacity:.85}
+.stat{display:flex;gap:10px;align-items:center}
+.pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px}
+textarea.input{min-height:100px}
+/* Reduced motion inside app */
+@media (prefers-reduced-motion: reduce){
+  .side, .side .item, .side .item .txt{ transition: none !important; }
+}
+</style></head>
+<body class="app">
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="/static/webos/js/icons.js"></script>
+  <script src="/static/webos/js/apps-common.js"></script>
+  <script src="/static/webos/js/auth.js"></script>
+  <div class="wrap">
+    <aside class="side app-card">
+  <div class="item active" data-sec="accounts"><span class="ico"><span class="iconify" data-icon="fluent:person-20-regular"></span></span><span class="txt">Accounts</span></div>
+      <div class="item" data-sec="installed"><span class="ico"><span class="iconify"></span></span><span class="txt"></span></div>
+      <div class="item" data-sec="themes"><span class="ico"><span class="iconify"></span></span><span class="txt"></span></div>
+      <div class="item" data-sec="privacy"><span class="ico"><span class="iconify"></span></span><span class="txt"></span></div>
+      <div class="item" data-sec="storage"><span class="ico"><span class="iconify"></span></span><span class="txt"></span></div>
+      <div class="item" data-sec="feedback"><span class="ico"><span class="iconify"></span></span><span class="txt"></span></div>
+  <div class="item" data-sec="danger"><span class="ico"><span class="iconify" data-icon="fluent:warning-20-regular" style="color:#f59e0b"></span></span><span class="txt">Delete account</span></div>
+    </aside>
+    <main class="main">
+      <section class="section" id="sec-accounts">
+        <div class="card">
+          <div class="title">Account</div>
+          <div class="row" style="align-items:flex-start">
+            <div style="display:flex;flex-direction:column;gap:8px;min-width:180px;align-items:center">
+              <img id="acc_avatar_preview" src="" alt="avatar" style="width:96px;height:96px;border-radius:50%;border:1px solid var(--border);object-fit:cover;background:#111827" />
+              <input type="file" id="acc_avatar" accept="image/*" style="display:none" />
+              <button id="acc_avatar_btn" class="btn">Upload Photo</button>
+            </div>
+            <div class="field" style="flex:1">
+              <div class="field"><label>Username</label><input id="acc_username" class="input" readonly aria-readonly="true" title="Username is permanent and cannot be changed" /></div>
+              <div class="field"><label>Email</label><input id="acc_email" class="input" /></div>
+              <div class="field"><label>Phone</label><input id="acc_phone" class="input" /></div>
+              <div class="row" style="margin-top:8px"><button id="saveAccount" class="btn icon"><span class="iconify" data-icon="fluent:save-20-regular"></span><span>Save</span></button></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title">Change Password</div>
+          <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap">
+            <input id="cur_pwd" class="input" type="password" placeholder="Current password" autocomplete="current-password" />
+            <input id="new_pwd" class="input" type="password" placeholder="New password" autocomplete="new-password" />
+            <button id="pwd_change" class="btn icon"><span class="iconify" data-icon="fluent:key-reset-20-regular"></span><span>Update Password</span></button>
+          </div>
+          <div class="row" style="margin-top:6px"><a href="/forgot/" style="color:#93c5fd;text-decoration:none">Forgot password?</a></div>
+        </div>
+      </section>
+      <section class="section" id="sec-installed" hidden>
+        <div class="card">
+          <div class="title">Installed apps</div>
+          <div id="installed-list" class="grid auto-fit-140"></div>
+        </div>
+      </section>
+      <section class="section" id="sec-themes" hidden>
+        <div class="card">
+          <div class="title">Wallpapers</div>
+          <div class="field">
+            <label for="wallpaper">Wallpaper URL</label>
+            <input id="wallpaper" class="input" placeholder="https://..." />
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button id="saveWallpaper" class="btn icon"><span class="iconify" data-icon="fluent:save-20-regular"></span><span>Save Wallpaper</span></button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title">Theme</div>
+          <div class="row" style="margin-top:8px">
+            <label for="theme" style="min-width:120px">Theme</label>
+            <select id="theme" class="input">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button id="saveTheme" class="btn icon"><span class="iconify" data-icon="fluent:save-20-regular"></span><span>Save Theme</span></button>
+          </div>
+        </div>
+      </section>
+      <section class="section" id="sec-privacy" hidden>
+        <div class="card">
+          <div class="title">Privacy</div>
+          <div class="muted">This workspace stores your app windows and preferences locally in your account. We don’t share your data.</div>
+        </div>
+      </section>
+      <section class="section" id="sec-storage" hidden>
+        <div class="card">
+          <div class="title">Storage</div>
+          <div class="stat"><span class="iconify" data-icon="fluent:database-24-regular"></span><span id="storage-text">—</span><span id="storage-pill" class="pill">2 GB limit</span></div>
+          <div id="storage-bar" style="height:12px;border:1px solid var(--border);border-radius:999px;margin-top:10px;overflow:hidden"><div id="storage-used" style="height:100%;width:0;background:linear-gradient(90deg,#8b5cf6,#3b82f6)"></div></div>
+          <div class="row" style="margin-top:10px">
+            <button id="buy-premium" class="btn icon"><span class="iconify" data-icon="fluent:arrow-trending-24-regular"></span><span>Buy Premium (₹20/month)</span></button>
+          </div>
+        </div>
+      </section>
+      <section class="section" id="sec-feedback" hidden>
+        <div class="card">
+          <div class="title">Feedback & Feature requests</div>
+          <div class="row">
+            <select id="fb-category" class="input"><option value="feedback">Feedback</option><option value="feature">Feature Request</option><option value="bug">Bug Report</option></select>
+          </div>
+          <div class="field" style="margin-top:8px">
+            <label for="fb-message">Message</label>
+            <textarea id="fb-message" class="input" placeholder="Tell us what's on your mind..."></textarea>
+          </div>
+          <div class="row" style="margin-top:8px"><button id="fb-send" class="btn icon"><span class="iconify" data-icon="fluent:send-20-regular"></span><span>Send</span></button></div>
+        </div>
+      </section>
+      <section class="section" id="sec-danger" hidden>
+        <div class="card" style="border-color:#f43f5e">
+          <div class="title">Delete account</div>
+          <div class="muted">This permanently deletes your account and files. Type DELETE to confirm.</div>
+          <div class="row" style="margin-top:8px"><input id="del-confirm" class="input" placeholder="DELETE" style="max-width:220px"/> <button id="del-btn" class="btn icon" style="background:#7f1d1d;border-color:#ef4444"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    // Local Iconify fallback
+    (function(){
+      function fallback(root){ (root||document).querySelectorAll('span.iconify').forEach(el=>{ if(el.querySelector('svg')) return; if(el.dataset.fallbackApplied==='1') return; el.dataset.fallbackApplied='1'; el.textContent='🗔'; el.style.fontSize='1.2em'; el.style.lineHeight='1'; el.style.display='inline-flex'; el.style.alignItems='center'; el.style.justifyContent='center'; }); }
+      document.addEventListener('DOMContentLoaded', ()=> fallback(document));
+      const mo=new MutationObserver(m=>{ m.forEach(x=> x.addedNodes && x.addedNodes.forEach(n=>{ if(n.nodeType===1) fallback(n); })); });
+      try{ mo.observe(document.body,{childList:true,subtree:true}); }catch{}
+    })();
+    // Section switching
+    const side = document.querySelector('.side');
+    // Inject icons and labels dynamically to support icon-only collapsed mode
+    const ICONS = {
+      accounts: {icon:'fluent:person-20-regular', filled:'fluent:person-20-filled', label:'Accounts'},
+      installed: {icon:'fluent:apps-list-20-regular', filled:'fluent:apps-list-20-filled', label:'Installed apps'},
+      themes: {icon:'fluent:paint-brush-20-regular', filled:'fluent:paint-brush-20-filled', label:'Themes & Personalisation'},
+      privacy: {icon:'fluent:lock-closed-20-regular', filled:'fluent:lock-closed-20-filled', label:'Privacy'},
+      storage: {icon:'fluent:database-20-regular', filled:'fluent:database-20-filled', label:'Storage'},
+      feedback: {icon:'fluent:chat-help-20-regular', filled:'fluent:chat-help-20-filled', label:'Feedback & Requests'},
+      danger: {icon:'fluent:warning-20-regular', filled:'fluent:warning-20-filled', label:'Delete account'}
+    };
+    function applySideMeta(){
+      side.querySelectorAll('.item').forEach(it=>{
+        const sec = it.dataset.sec; const cfg = ICONS[sec]; if(!cfg) return;
+        const iconEl = it.querySelector('.iconify'); if(iconEl) iconEl.setAttribute('data-icon', it.classList.contains('active') && cfg.filled ? cfg.filled : cfg.icon);
+        const txtEl = it.querySelector('.txt'); if(txtEl) txtEl.textContent = cfg.label;
+      });
+    }
+    applySideMeta();
+    side.addEventListener('click', (e)=>{
+      const it = e.target.closest('.item'); if(!it) return;
+      document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n===it));
+      const sec = it.dataset.sec;
+      document.querySelectorAll('main .section').forEach(s=> s.hidden = (s.id !== `sec-${sec}`));
+      if(sec==='installed') loadInstalled();
+      if(sec==='storage') loadStorage();
+      applySideMeta();
+    });
+
+    // Use shell state via postMessage
+    let CUR_STATE = {};
+  window.parent.postMessage({type:'webos:getState'}, '*');
+    window.addEventListener('message', ev=>{
+      if(ev.data?.type==='webos:state'){
+        const s = ev.data.state||{}; CUR_STATE = s;
+  document.getElementById('theme').value = s.appearance?.theme || 'dark';
+  document.getElementById('wallpaper').value = s.appearance?.wallpaper || '';
+        // Prefill account if provided via shell (optional)
+        if(s.account){ acc_username.value=s.account.username||''; acc_email.value=s.account.email||''; acc_phone.value=s.account.phone||''; }
+      }
+      if(ev.data?.type==='webos:togglePane'){
+        document.body.classList.toggle('pane-collapsed');
+      } else if(ev.data?.type==='webos:navigate' && ev.data.action==='back'){
+        const first = side.querySelector('.item[data-sec="installed"]'); if(first){ first.click(); }
+      }
+    });
+    document.getElementById('saveTheme').addEventListener('click', ()=>{
+      const theme=document.getElementById('theme').value;
+      const appearance = Object.assign({}, CUR_STATE.appearance||{}, {theme});
+      CUR_STATE.appearance = appearance;
+      window.parent.postMessage({type:'webos:setState', state:{appearance}}, '*');
+    });
+    document.getElementById('saveWallpaper').addEventListener('click', ()=>{
+      const wallpaper=document.getElementById('wallpaper').value.trim();
+      const appearance = Object.assign({}, CUR_STATE.appearance||{}, {wallpaper});
+      CUR_STATE.appearance = appearance;
+      window.parent.postMessage({type:'webos:setState', state:{appearance}}, '*');
+    });
+
+  // Account: persist directly to server via API
+    async function getCsrf(){ const name='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(name)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    async function loadAccount(){
+      try{
+        const r = await fetch('../api/account');
+        if(r.ok){ const j = await r.json(); acc_username.value=j.username||''; acc_email.value=j.email||''; acc_phone.value=j.phone||''; if(j.avatar){ acc_avatar_preview.src=j.avatar; } else { acc_avatar_preview.src=''; acc_avatar_preview.style.background='#111827'; } }
+      }catch(e){}
+    }
+    document.getElementById('saveAccount').addEventListener('click', async ()=>{
+      const fd = new FormData(); fd.set('username', acc_username.value); fd.set('email', acc_email.value); fd.set('phone', acc_phone.value);
+      const r = await fetch('../api/account', { method:'POST', body: fd, headers: {'X-CSRFToken': await getCsrf()} });
+      if(!r.ok){ const j=await r.json(); alert(j.error||'Failed to save'); return; }
+      const j = await r.json();
+      CUR_STATE.account = { username:j.username, email:j.email, phone:j.phone };
+      // Also update shell state so other apps can see it
+      window.parent.postMessage({type:'webos:setState', state:{account:CUR_STATE.account}}, '*');
+      alert('Saved');
+    });
+
+    // Avatar upload
+    document.getElementById('acc_avatar_btn').addEventListener('click', ()=> document.getElementById('acc_avatar').click());
+    document.getElementById('acc_avatar').addEventListener('change', async ()=>{
+      const inp = document.getElementById('acc_avatar'); if(!inp.files.length) return;
+      const fd = new FormData(); fd.set('file', inp.files[0]);
+      const r = await fetch('../api/account/avatar', { method:'POST', body: fd, headers:{'X-CSRFToken': await getCsrf()} });
+      const j = await r.json(); if(!r.ok){ alert(j.error||'Failed'); return; }
+      acc_avatar_preview.src = j.avatar || '';
+    });
+
+    // Change password
+    document.getElementById('pwd_change').addEventListener('click', async ()=>{
+      const cur = document.getElementById('cur_pwd').value; const nw = document.getElementById('new_pwd').value;
+      if(!cur || !nw){ alert('Enter current and new password'); return; }
+      const fd = new FormData(); fd.set('current_password', cur); fd.set('new_password', nw);
+      const r = await fetch('../api/account/password', { method:'POST', body: fd, headers:{'X-CSRFToken': await getCsrf()} });
+      const j = await r.json(); if(!r.ok){ alert(j.error||'Failed'); return; }
+      alert('Password updated'); document.getElementById('cur_pwd').value=''; document.getElementById('new_pwd').value='';
+    });
+
+    // Installed apps
+    async function loadInstalled(){
+      try{ const r=await fetch('../api/store/apps'); const j=await r.json(); const host=document.getElementById('installed-list'); host.innerHTML=''; (j.apps||[]).filter(a=>a.installed).forEach(a=>{
+        const d=document.createElement('div'); d.className='app-card'; d.innerHTML=`<div class="row"><span class="iconify" data-icon="${a.icon && a.icon.includes(':') ? a.icon : 'fluent:apps-24-regular'}"></span><strong>${a.name}</strong><span class="muted">(${a.kind})</span></div>`; host.appendChild(d);
+      }); }catch(e){}
+    }
+
+    // Storage
+  async function loadStorage(){ try{ const r=await fetch('../api/storage'); const j=await r.json(); const used=j.used_bytes||0, lim=j.limit_bytes||1; const pct=Math.min(100, Math.round((used/lim)*100)); storageUsed.style.width=pct+'%'; const gb=(lim/1024/1024/1024); storageText.textContent = `${(used/1024/1024).toFixed(1)} MB of ${gb>=1? gb.toFixed(0): (lim/1024/1024).toFixed(0)+' MB'} used (${pct}%)`; document.getElementById('storage-pill').textContent = (j.plan==='premium'?'50 GB limit (Premium)':'2 GB limit'); if(j.plan==='premium'){ document.getElementById('buy-premium').disabled=true; document.getElementById('buy-premium').textContent='Premium active'; } }catch(e){} }
+  document.getElementById('buy-premium').addEventListener('click', async ()=>{ const r=await fetch('../api/premium/buy', {method:'POST', headers:{'X-CSRFToken': await getCsrf()}}); const j=await r.json(); if(!r.ok){ alert(j.error||'Failed'); return; } loadStorage(); });
+    const storageUsed=document.getElementById('storage-used'); const storageText=document.getElementById('storage-text');
+
+    // Feedback
+    document.getElementById('fb-send').addEventListener('click', async()=>{
+      const fd=new FormData(); fd.set('category', document.getElementById('fb-category').value); fd.set('message', document.getElementById('fb-message').value.trim());
+      const r=await fetch('../api/feedback', {method:'POST', body:fd, headers:{'X-CSRFToken': await getCsrf()}}); if(!r.ok){ const j=await r.json(); alert(j.error||'Failed'); return; } alert('Thanks for your feedback!'); document.getElementById('fb-message').value='';
+    });
+
+    // Danger zone
+    document.getElementById('del-btn').addEventListener('click', async()=>{
+      const conf=document.getElementById('del-confirm').value.trim(); const fd=new FormData(); fd.set('confirm', conf);
+      const r=await fetch('../api/account/delete', {method:'POST', body:fd, headers:{'X-CSRFToken': await getCsrf()}}); const j=await r.json(); if(!r.ok){ alert(j.error||'Failed'); return; } window.top.location.href = j.redirect || '/';
+    });
+
+    // On load, fetch server account to prefill and initialise first panes
+    loadAccount(); loadInstalled();
+  </script>
+</body></html>

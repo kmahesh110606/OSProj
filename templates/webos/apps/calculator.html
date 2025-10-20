@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/webos/css/ui.css">
+  <link rel="stylesheet" href="/static/webos/css/apps-common.css">
+  <style>
+    :root{ --calc-bg:#0b0f19; --calc-text:#e5e7eb; --calc-display:#0f172a; --calc-accent:#3b82f6; }
+    body.theme-light{ --calc-bg:#ffffff; --calc-text:#0f172a; --calc-display:#f3f4f6; --calc-accent:#2563eb; }
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;background:transparent;color:var(--calc-text)}
+    .wrap{display:flex;align-items:center;justify-content:center;height:100vh}
+    .calc{width:min(480px,96%);background:rgba(0,0,0,.06);border:1px solid var(--os-border);border-radius:14px;padding:12px}
+    body.theme-light .calc{background:rgba(255,255,255,.6)}
+    .display{background:var(--calc-display);color:#8b5cf6;padding:14px 16px;font-size:28px;text-align:right;border-radius:10px;margin-bottom:12px;border:1px solid var(--os-border);font-variant-numeric:tabular-nums}
+    .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .keys button{padding:14px;border:1px solid var(--os-border);border-radius:12px;background:#1f2937;color:var(--calc-text);cursor:pointer;transition:box-shadow .15s, transform .1s}
+    .keys button:hover{box-shadow:0 8px 20px color-mix(in oklab, var(--os-glow) 25%, transparent), 0 0 0 1px color-mix(in oklab, var(--os-glow) 35%, transparent) inset; transform:translateY(-1px) scale(1.04)}
+    body.theme-light .keys button{background:#ffffff}
+    .keys button.op{background:var(--calc-accent);border-color:var(--calc-accent);color:#fff}
+    .keys button.wide{grid-column: span 2}
+    @media (max-width:420px){ .display{font-size:22px} .keys button{padding:12px} }
+  </style>
+</head>
+<body class="app">
+  <script src="/static/webos/js/apps-common.js"></script>
+  <div class="wrap">
+    <div class="calc">
+      <div class="display" id="d">0</div>
+      <div class="keys">
+        <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="op" data-k="/">÷</button>
+        <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="op" data-k="*">×</button>
+        <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="op" data-k="-">−</button>
+        <button data-k="0" class="wide">0</button><button data-k=".">.</button><button class="op" data-k="=">=</button><button class="op" data-k="+">+</button>
+        <button data-k="C" class="wide" style="background:#ef4444;border-color:#ef4444">C</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Optional: cooperate with WebOS for persistence (stores last expression)
+    window.parent.postMessage({type:'webos:getState'}, '*');
+    window.addEventListener('message', ev=>{
+      if(ev.data && ev.data.type==='webos:state'){
+        const s = ev.data.state||{}; if(s.calcExpr){ expr = s.calcExpr; d.textContent = expr || '0'; }
+      }
+    });
+    let expr=""; const d=document.getElementById('d');
+    function clampDisplay(){ if(d.textContent.length>24){ d.style.fontSize='22px'; } else { d.style.fontSize='28px'; } }
+    function commit(){ d.textContent = expr || '0'; clampDisplay(); try{ window.parent.postMessage({type:'webos:setState', state:{calcExpr: expr}}, '*'); }catch{} }
+    function evalNow(){ try{ expr=String(Function('return '+expr)()); }catch{ expr='Err'; } d.textContent=expr; clampDisplay(); try{ window.parent.postMessage({type:'webos:setState', state:{calcExpr: expr}}, '*'); }catch{} }
+    document.body.addEventListener('click',e=>{
+      const k=e.target.getAttribute('data-k'); if(!k) return;
+      if(k==='C'){expr=''; d.textContent='0'; clampDisplay(); return;}
+      if(k==='='){ evalNow(); return; }
+      expr += k; commit();
+    });
+    // Keyboard support
+    window.addEventListener('keydown', (e)=>{
+      const allow = '0123456789.+-*/';
+      if(allow.includes(e.key)){
+        expr += e.key; commit();
+      } else if(e.key === 'Enter' || e.key === '='){
+        evalNow();
+      } else if(e.key === 'Escape'){
+        expr=''; d.textContent='0'; clampDisplay();
+      } else if(e.key === 'Backspace'){
+        expr = expr.slice(0,-1); commit();
+      }
+    });
+  </script>
+</body></html>

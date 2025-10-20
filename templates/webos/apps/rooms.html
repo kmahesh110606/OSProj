@@ -1,0 +1,96 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<style>
+.wrap{display:flex;height:100vh}
+.side{width:240px;border-right:1px solid var(--border);padding:8px;overflow:auto;background:rgba(255,255,255,.04)}
+.side .nav{display:flex;flex-direction:column;gap:6px}
+.side .nav .item{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:10px;cursor:pointer}
+.side .nav .item.active{background:rgba(255,255,255,.08)}
+.side .nav .item .iconify{font-size:18px}
+.badge{min-width:18px;height:18px;border-radius:999px;background:#ef4444;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;padding:0 6px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.pane-collapsed .side{display:none}
+.pane-collapsed .main{width:100%}
+.header{display:flex;gap:12px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
+.list{display:flex;flex-direction:column;gap:8px;padding:12px;overflow:auto}
+.room{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--surface);display:flex;align-items:center;gap:8px}
+.room .name{font-weight:600}
+.empty{opacity:.8;padding:14px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center}
+.modal .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;min-width:280px}
+/* Toast */
+.toast{position:fixed;right:14px;bottom:14px;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+</style></head>
+<body class="app">
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="/static/webos/js/icons.js"></script>
+  <script src="/static/webos/js/apps-common.js"></script>
+  <div class="wrap">
+    <aside class="side app-card">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <strong>Rooms</strong>
+        <button id="btn-create" class="btn icon"><span class="iconify" data-icon="fluent:add-20-regular"></span><span>New</span></button>
+      </div>
+      <div class="nav" id="nav">
+        <div class="item active" data-tab="rooms"><span class="iconify" data-icon="fluent:people-community-20-regular"></span><span>My Rooms</span></div>
+        <div class="item" data-tab="invites"><span class="iconify" data-icon="fluent:mail-20-regular"></span><span>Invites</span><span id="badge" class="badge" style="display:none">0</span></div>
+      </div>
+    </aside>
+    <section class="main">
+      <div class="header app-card">
+        <h3 id="title" style="margin:0">Rooms</h3>
+        <div style="margin-left:auto"></div>
+        <button id="refresh" class="btn"><span class="iconify" data-icon="fluent:arrow-sync-20-regular"></span><span>Refresh</span></button>
+      </div>
+      <div id="rooms" class="list"></div>
+      <div id="invites" class="list" style="display:none"></div>
+    </section>
+  </div>
+  <div id="modal" class="modal">
+    <div class="card app-card">
+      <div class="row" style="align-items:center; gap:8px">
+        <span class="iconify" data-icon="fluent:people-community-20-regular"></span>
+        <strong>Create Room</strong>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <input id="room-title" class="input" placeholder="Room name" style="flex:1">
+      </div>
+      <div class="row" style="margin-top:10px; justify-content:flex-end; gap:8px">
+        <button id="cancel" class="btn">Cancel</button>
+        <button id="create" class="btn">Create</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const $=s=>document.querySelector(s);
+    function toast(msg){ try{ const t=document.createElement('div'); t.className='toast app-card'; t.textContent=String(msg||''); document.body.appendChild(t); setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(6px)'; setTimeout(()=> t.remove(), 280); }, 1600); }catch(e){} }
+    const roomsEl=$('#rooms'); const invitesEl=$('#invites'); const badge=$('#badge');
+    let curTab='rooms';
+    async function loadRooms(){ const r=await fetch('../api/chat/rooms'); const j=await r.json(); const items=j.items||[]; roomsEl.innerHTML=''; if(!items.length){ roomsEl.innerHTML = `<div class='empty app-card'>No rooms yet. Rooms let you chat in groups. Click New to create one and invite others.</div>`; return; }
+      items.forEach(it=>{ const d=document.createElement('div'); d.className='room'; d.innerHTML=`<span class="iconify" data-icon="fluent:people-community-20-regular"></span><span class="name">${it.title||('Room '+it.id)}</span><span style="margin-left:auto"></span><button class="btn" data-id="${it.id}"><span class="iconify" data-icon="fluent:add-20-regular"></span><span>Invite</span></button>`; d.querySelector('button').onclick=(ev)=>{ ev.stopPropagation(); inviteToRoom(it.id); }; d.onclick=()=> openRoom(it.id); roomsEl.appendChild(d); });
+    }
+    async function loadInvites(){ const r=await fetch('../api/chat/invites'); const j=await r.json(); const items=j.items||[]; invitesEl.innerHTML=''; if(!items.length){ invitesEl.innerHTML = `<div class='empty app-card'>No invites pending.</div>`; } items.forEach(it=>{ const row=document.createElement('div'); row.className='room'; row.innerHTML = `<span class='iconify' data-icon='fluent:mail-20-regular'></span><span class='name'>${it.title||('Invite '+it.id)}</span><span style='margin-left:auto'></span><button class='btn' data-id='${it.id}'>Accept</button>`; row.querySelector('button').onclick=()=> acceptInvite(it.id); invitesEl.appendChild(row); }); badge.style.display = items.length? 'inline-flex':'none'; badge.textContent = items.length; }
+  async function acceptInvite(id){ const fd=new FormData(); fd.set('conversation_id', id); const r=await fetch('../api/chat/accept',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); if(r.ok) toast('Joined room'); await loadInvites(); await loadRooms(); }
+    function openRoom(id){ try{ window.parent.postMessage({type:'webos:launch', app:{slug:'chat',kind:'builtin',path:'apps/chat'}, params:{roomId:id}, focus:true}, '*'); }catch(e){} }
+    function getCsrf(){ const n='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    // Nav switching
+    document.getElementById('nav').addEventListener('click', (e)=>{ const it=e.target.closest('.item'); if(!it) return; document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n===it)); curTab=it.dataset.tab; $('#rooms').style.display = (curTab==='rooms')?'':'none'; $('#invites').style.display = (curTab==='invites')?'':'none'; });
+    // Modal create
+    const modal=$('#modal'); const btnNew=$('#btn-create'); const btnCreate=$('#create'); const btnCancel=$('#cancel');
+    btnNew.onclick=()=>{ $('#room-title').value=''; modal.style.display='flex'; };
+    btnCancel.onclick=()=>{ modal.style.display='none'; };
+  btnCreate.onclick=async()=>{ const title=$('#room-title').value.trim(); if(!title) return; const fd=new FormData(); fd.set('title', title); const r=await fetch('../api/chat/create_room',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); if(r.ok){ modal.style.display='none'; toast('Room created'); await loadRooms(); } };
+    $('#refresh').onclick=()=>{ if(curTab==='rooms') loadRooms(); else loadInvites(); };
+    // Initial load
+    loadRooms(); loadInvites();
+  async function inviteToRoom(roomId){ const name = prompt('Invite username to this room (case-sensitive)'); if(!name) return; const fd=new FormData(); fd.set('conversation_id', roomId); fd.set('username', name.trim()); const r=await fetch('../api/chat/invite',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); const j=await r.json(); if(!r.ok){ if(j.error==='user not found'){ toast('User not found. Usernames are case-sensitive.'); } else { toast(j.error||'Failed'); } return; } if(j.status==='invited'){ toast('Invite sent to '+name); } else if(j.status==='already_invited'){ toast('Invite already pending for '+name); } else if(j.status==='exists_accepted'){ toast(name+' is already a member'); } }
+    // Listen for pane toggle from shell
+    window.addEventListener('message', (ev)=>{
+      const msg=ev.data||{};
+      if(msg.type==='webos:togglePane'){
+        document.body.classList.toggle('pane-collapsed');
+      }
+    });
+  </script>
+</body></html>

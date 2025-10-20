@@ -1,0 +1,74 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<style>
+body.app{height:100vh;display:flex;flex-direction:column}
+.toolbar{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
+.board{flex:1;position:relative;background:#0b1220}
+body.theme-light .board{background:#ffffff}
+canvas{position:absolute;left:0;top:0;width:100%;height:100%}
+.color{width:22px;height:22px;border-radius:50%;border:1px solid #374151;cursor:pointer}
+.row{display:flex;gap:8px;align-items:center}
+label{opacity:.85}
+</style></head>
+<body class="app">
+  <script src="/static/webos/js/icons.js"></script>
+  <div class="toolbar app-card">
+    <div class="row"><label>Brush</label><input id="size" type="range" min="1" max="36" value="4"></div>
+    <div class="row"><label>Color</label>
+      <button class="color" data-color="#000000" style="background:#000000"></button>
+      <button class="color" data-color="#ff0000" style="background:#ff0000"></button>
+      <button class="color" data-color="#00c853" style="background:#00c853"></button>
+      <button class="color" data-color="#2979ff" style="background:#2979ff"></button>
+      <button class="color" data-color="#ffab00" style="background:#ffab00"></button>
+      <button class="color" data-color="#ffffff" style="background:#ffffff"></button>
+    </div>
+    <button id="btn-erase" class="btn">Eraser</button>
+    <button id="btn-clear" class="btn">Clear</button>
+    <div class="row" style="margin-left:auto">
+      <input id="wb-name" class="input" placeholder="Name (e.g., sketch)" style="width:200px">
+      <button id="btn-save" class="btn">Save</button>
+      <button id="btn-export" class="btn">Export PNG</button>
+    </div>
+  </div>
+  <div class="board"><canvas id="c"></canvas></div>
+  <script>
+    const $=s=>document.querySelector(s);
+    const canvas=$('#c'), ctx=canvas.getContext('2d');
+    let drawing=false, color='#000', size=4, erase=false, pathParam=null;
+    function resize(){ const r=canvas.parentElement.getBoundingClientRect(); const img = ctx.getImageData(0,0,canvas.width||1,canvas.height||1); canvas.width=Math.max(1, r.width); canvas.height=Math.max(1, r.height); ctx.putImageData(img,0,0); }
+    window.addEventListener('resize', resize);
+    setTimeout(resize, 20);
+    function pos(ev){ const rect=canvas.getBoundingClientRect(); const p=ev.touches? ev.touches[0]: ev; return {x:(p.clientX-rect.left)*canvas.width/rect.width, y:(p.clientY-rect.top)*canvas.height/rect.height}; }
+    function begin(ev){ drawing=true; const p=pos(ev); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+    function move(ev){ if(!drawing) return; const p=pos(ev); ctx.lineTo(p.x,p.y); ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=size; ctx.strokeStyle=erase? '#00000000' : color; if(erase){ ctx.globalCompositeOperation='destination-out'; } else { ctx.globalCompositeOperation='source-over'; } ctx.stroke(); }
+    function end(){ drawing=false; }
+    canvas.addEventListener('mousedown', begin); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', (e)=>{ begin(e); e.preventDefault(); }, {passive:false});
+    canvas.addEventListener('touchmove', (e)=>{ move(e); e.preventDefault(); }, {passive:false});
+    canvas.addEventListener('touchend', end);
+    document.querySelectorAll('.color').forEach(b=> b.onclick=()=>{ color=b.dataset.color; erase=false; });
+    $('#size').oninput=(e)=> size=parseInt(e.target.value,10)||4;
+    $('#btn-erase').onclick=()=> erase=!erase;
+    $('#btn-clear').onclick=()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); };
+    function getCsrf(){ const n='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    async function save(){
+      let name = ($('#wb-name').value||'').trim();
+      if(!name) name = 'whiteboard';
+      const png = canvas.toDataURL('image/png');
+      const data = { version:1, strokes:[], preview_b64_png: png.replace(/^data:image\/png;base64,/, '') };
+      const path = `/Whiteboards/${name}.wbdz`;
+      // ensure folder and write file
+      try{ await fetch('../api/fs/mkdir',{method:'POST', body:(d=>{const fd=new FormData(); fd.set('path','/Whiteboards'); fd.set('name',''); return fd;})(), headers:{'X-CSRFToken':getCsrf()}}); }catch{}
+      const fd=new FormData(); fd.set('path', path); fd.set('content', JSON.stringify(data));
+      const r=await fetch('../api/fs/write',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
+      if(!r.ok){ alert('Save failed'); return; }
+      alert('Saved to '+path);
+    }
+    async function exportPng(){ const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download=(($('#wb-name').value||'whiteboard')+'.png'); a.click(); }
+    $('#btn-save').onclick=save; $('#btn-export').onclick=exportPng;
+    // If opened with ?path=, load and draw from preview
+    try{ const qs=new URLSearchParams(location.search); pathParam=qs.get('path'); if(pathParam){ const r=await fetch(`../api/fs/read?path=${encodeURIComponent(pathParam)}`); const j=await r.json(); if(j && j.content){ let data=j.content; try{ data = typeof data==='string'? JSON.parse(data) : data; }catch{} const b64=data.preview_b64_png; if(b64){ const img=new Image(); img.onload=()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); }; img.src='data:image/png;base64,'+b64; const nm=String(pathParam).split('/').pop().replace(/\.wbdz$/i,''); $('#wb-name').value = nm; } } }
+    }catch{}
+  </script>
+</body></html>

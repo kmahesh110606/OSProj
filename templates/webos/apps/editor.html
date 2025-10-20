@@ -1,0 +1,65 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/static/webos/css/apps-common.css">
+<style>
+.wrap{display:flex;height:100vh}
+.sidebar{width:260px;border-right:1px solid var(--border);padding:8px;overflow:auto}
+.sidebar h3{margin:6px 0 8px}
+.section{margin-bottom:12px}
+.files{max-height:40vh;overflow:auto}
+.list{list-style:none;margin:0;padding:0}
+.list li{padding:6px;border-radius:8px;cursor:pointer}
+.list li.active{background:rgba(255,255,255,.08)}
+.editor{flex:1;display:flex;flex-direction:column}
+.editor header{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
+textarea{flex:1;padding:12px;border:0;outline:0;font-family:Consolas,monospace;font-size:14px;background:transparent;color:inherit}
+</style></head>
+<body class="app">
+  <div class="wrap">
+    <aside class="sidebar app-card">
+      <div class="section">
+        <h3>Notes</h3>
+        <button id="new-note" class="btn" style="width:100%">New Note</button>
+        <ul id="notes" class="list">
+          {% for n in notes %}
+            <li data-type="note" data-id="{{n.id}}">📝 {{n.title}}</li>
+          {% empty %}
+            <li>No notes yet</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="section">
+        <h3>Files</h3>
+        <div style="display:flex;gap:6px;margin-bottom:6px"><input id="fs-path" class="input" value="/" /><button id="fs-load" class="btn">Go</button></div>
+        <ul id="files" class="list files"></ul>
+      </div>
+    </aside>
+    <section class="editor">
+      <header class="app-card">
+        <input id="title" class="input" placeholder="Title or /path/to/file.txt" style="flex:1" />
+        <button id="save" class="btn">Save</button>
+        <button id="del" class="btn" style="background:#ef4444;color:#fff">Delete</button>
+      </header>
+      <textarea id="content" placeholder="Start typing..."></textarea>
+    </section>
+  </div>
+  <script>
+    const $=s=>document.querySelector(s); const $$=s=>Array.from(document.querySelectorAll(s));
+    function getCsrf(){ const n='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
+    let current={ kind:null, id:null, path:null };
+    async function loadNotes(){ /* already server-rendered */ }
+    async function loadFiles(){ const p=$('#fs-path').value||'/'; const r=await fetch(`../api/fs/list?path=${encodeURIComponent(p)}`); const j=await r.json(); const ul=$('#files'); ul.innerHTML=''; (j.entries||[]).forEach(e=>{ const li=document.createElement('li'); li.dataset.type=e.is_dir?'dir':'file'; li.dataset.path=e.path; li.textContent=(e.is_dir?'📁 ':'📄 ')+e.name; ul.appendChild(li); }); }
+    async function openItem(li){ if(li.dataset.type==='note'){ const id=li.dataset.id; const r=await fetch(`../api/notes/${id}`); const j=await r.json(); current={kind:'note', id:id}; $('#title').value=j.title||''; $('#content').value=j.content||''; } else if(li.dataset.type==='file'){ const p=li.dataset.path; if(p.endsWith('/')){ $('#fs-path').value=p; await loadFiles(); return; } const r=await fetch(`../api/fs/read?path=${encodeURIComponent(p)}`); const j=await r.json(); if(j.error){ alert(j.error); return; } current={kind:'file', path:p}; $('#title').value=p; $('#content').value=j.content||''; } }
+    async function save(){ if(current.kind==='note' && current.id){ const fd=new FormData(); fd.set('title',$('#title').value); fd.set('content',$('#content').value); await fetch(`../api/notes/${current.id}`, {method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); const li=$(`#notes li[data-id="${current.id}"]`); if(li) li.textContent='📝 '+($('#title').value||'Untitled'); }
+      else { const p=$('#title').value.trim(); if(!p||p.endsWith('/')) return alert('Enter a valid file path'); const fd=new FormData(); fd.set('path',p); fd.set('content',$('#content').value); await fetch('../api/fs/write',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); current={kind:'file', path:p}; alert('Saved'); } }
+    async function del(){ if(current.kind==='note' && current.id){ await fetch(`../api/notes/${current.id}/delete`, {method:'POST', headers:{'X-CSRFToken':getCsrf()}}); const li=$(`#notes li[data-id="${current.id}"]`); if(li) li.remove(); $('#title').value=''; $('#content').value=''; current={}; }
+      else if(current.kind==='file' && current.path){ const ok=confirm('Delete file?'); if(!ok) return; const fd=new FormData(); fd.set('path', current.path); await fetch('../api/fs/delete',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); $('#title').value=''; $('#content').value=''; current={}; await loadFiles(); } }
+    $('#notes').addEventListener('click', e=>{ const li=e.target.closest('li[data-id]'); if(li) openItem(li); });
+    $('#files').addEventListener('click', e=>{ const li=e.target.closest('li'); if(li) openItem(li); });
+    $('#fs-load').onclick=loadFiles; $('#save').onclick=save; $('#del').onclick=del; $('#new-note').onclick=async()=>{ const fd=new FormData(); fd.set('title','Untitled'); fd.set('content',''); const r=await fetch('../api/notes/create',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); const j=await r.json(); const li=document.createElement('li'); li.dataset.type='note'; li.dataset.id=j.id; li.textContent='📝 '+j.title; document.getElementById('notes').prepend(li); };
+    // If launched with ?path=, load that file
+    const q=new URLSearchParams(location.search); const qp=q.get('path');
+    if(qp){ (async()=>{ try{ const r=await fetch(`../api/fs/read?path=${encodeURIComponent(qp)}`); const j=await r.json(); if(!j.error){ current={kind:'file', path:qp}; $('#title').value=qp; $('#content').value=j.content||''; $('#fs-path').value=(qp.replace(/\/?[^\/]+$/,'/')||'/'); } }catch(e){} finally{ loadFiles(); } })(); }
+    else { loadFiles(); }
+  </script>
+</body></html>
