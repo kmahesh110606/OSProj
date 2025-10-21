@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+try:
+    import whitenoise  # type: ignore
+    _WHITENOISE_AVAILABLE = True
+except Exception:
+    _WHITENOISE_AVAILABLE = False
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +26,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-l+bf$anh+46r%uy$z+q$e6rh-xe-85l8@xbuxqy9%5=5-2h9p5'
+# Prefer environment variable in production; fall back to dev key.
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-l+bf$anh+46r%uy$z+q$e6rh-xe-85l8@xbuxqy9%5=5-2h9p5')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = []
+# Comma-separated hostnames, e.g. "yourapp.azurewebsites.net,example.com"
+_hosts = os.getenv('ALLOWED_HOSTS', '').strip()
+ALLOWED_HOSTS = [h.strip() for h in _hosts.split(',') if h.strip()] if _hosts else []
+
+# For CSRF on Azure App Service: add your full https origins
+if ALLOWED_HOSTS:
+    CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
 
 
 # Application definition
@@ -41,8 +54,19 @@ INSTALLED_APPS = [
     'webos',
 ]
 
+# Use WhiteNoise during development server as well (no conflict), if installed
+if _WHITENOISE_AVAILABLE:
+    try:
+        INSTALLED_APPS.insert(0, 'whitenoise.runserver_nostatic')
+    except Exception:
+        pass
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+]
+if _WHITENOISE_AVAILABLE:
+    MIDDLEWARE.append('whitenoise.middleware.WhiteNoiseMiddleware')
+MIDDLEWARE += [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -120,6 +144,12 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+# Where collectstatic will gather files (Azure/App Service)
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Use compressed manifest storage when WhiteNoise is available
+if _WHITENOISE_AVAILABLE:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

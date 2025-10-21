@@ -11,6 +11,10 @@ body.app{ margin:0; font-family:system-ui,Segoe UI,Arial,sans-serif; color:var(-
 .btn:hover{ box-shadow:0 8px 20px rgba(139,92,246,.25), 0 0 0 1px rgba(139,92,246,.35) inset; transform:translateY(-1px) }
 .btn:active{ transform:translateY(0) scale(.98) }
 .btn.icon{ display:inline-flex; align-items:center; gap:8px }
+/* Ripple effect base */
+.btn, .menu-btn{ position:relative; overflow:hidden }
+.ripple-ring{ position:absolute; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; opacity:.5; mix-blend-mode:screen; animation:rippleAnim var(--anim-slow) var(--ease-out) forwards }
+@keyframes rippleAnim{ from{ width:0; height:0; opacity:.6 } to{ width:300px; height:300px; opacity:0 } }
 .field{ display:flex; flex-direction:column; gap:6px }
 .input{ padding:8px 12px; border:1px solid var(--border); border-radius:12px; background:#0b1220; color:#e5e7eb; transition: border-color var(--anim-fast) var(--ease-in-out), background var(--anim-fast) var(--ease-in-out) }
 .input:focus{ outline:none; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); background: rgba(11,18,32,.9) }

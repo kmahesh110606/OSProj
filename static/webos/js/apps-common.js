@@ -75,6 +75,30 @@
     window.toast = window.showToast;
   }catch{}
 
+  // Global ripple on buttons and menu buttons
+  try{
+    function addRipple(e){
+      const target = e.currentTarget;
+      const rect = target.getBoundingClientRect();
+      const ring = document.createElement('span'); ring.className='ripple-ring';
+      const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+      ring.style.left = x+'px'; ring.style.top = y+'px';
+      // Color: derive from accent or hover glow
+      const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#3b82f6';
+      ring.style.background = accent.trim();
+      target.appendChild(ring);
+      setTimeout(()=>{ try{ ring.remove(); }catch{} }, 600);
+    }
+    function bindRipples(root){
+      (root||document).querySelectorAll('.btn, .menu-btn').forEach(el=>{
+        if(el._hasRipple) return; el._hasRipple = true; el.addEventListener('click', addRipple);
+      });
+    }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', ()=> bindRipples(document)); else bindRipples(document);
+    const mo2 = new MutationObserver(muts=>{ muts.forEach(m=>{ if(m.addedNodes){ m.addedNodes.forEach(n=>{ if(n.nodeType===1) bindRipples(n); }); } }); });
+    mo2.observe(document.body, {childList:true, subtree:true});
+  }catch{}
+
   // Local Fluent icon replacements (no external Iconify). Map common IDs to emoji.
   const ICON_MAP = {
     'fluent:search-20-regular': '🔍',

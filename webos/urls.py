@@ -31,6 +31,7 @@ urlpatterns = [
     path("api/fs/delete", views.fs_delete, name="webos-fs-delete"),
     path("api/fs/upload", views.fs_upload, name="webos-fs-upload"),
     path("api/fs/download", views.fs_download, name="webos-fs-download"),
+    path("api/fs/download-multi", views.fs_download_multi, name="webos-fs-download-multi"),
     path("api/fs/copy", views.fs_copy, name="webos-fs-copy"),
     path("api/fs/move", views.fs_move, name="webos-fs-move"),
     path("api/fs/rename", views.fs_rename, name="webos-fs-rename"),
@@ -60,6 +61,7 @@ urlpatterns = [
     path("api/store/upload", views.store_upload, name="webos-store-upload"),
     # Account API
     path("api/account", views.account_api, name="webos-account"),
+    path("api/presence/heartbeat", views.presence_heartbeat, name="webos-presence-heartbeat"),
     path("api/account/delete", views.account_delete, name="webos-account-delete"),
     path("api/account/avatar", views.account_avatar, name="webos-account-avatar"),
     path("api/account/password", views.account_password, name="webos-account-password"),

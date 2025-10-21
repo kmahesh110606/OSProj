@@ -644,17 +644,33 @@
     };
   window.addEventListener('message', handle);
   // Back and Pane toggle buttons -> forward to iframe
-  if(btnBackEl){ btnBackEl.addEventListener('click', ()=>{
-    try{
-      if(iframe && iframe.contentWindow && iframe.contentWindow.history){
-        iframe.contentWindow.history.back();
-      } else {
-        iframe.contentWindow.postMessage({type:'webos:navigate', action:'back'}, '*');
+  if(btnBackEl){
+    const backCap = { fromHistory: false, fromApp: false };
+    function updateBackBtn(){ const enabled = !!(backCap.fromHistory || backCap.fromApp); btnBackEl.disabled = !enabled; }
+    function refreshHistoryCap(){ try{ const len = iframe?.contentWindow?.history?.length || 0; backCap.fromHistory = (len > 1); }catch{ backCap.fromHistory = false; } updateBackBtn(); }
+    // Initial and on each navigation load in iframe
+    try{ iframe.addEventListener('load', refreshHistoryCap); }catch{}
+    // Click behavior: only navigate back when we know it's safe/handled
+    btnBackEl.addEventListener('click', ()=>{
+      const can = (backCap.fromHistory || backCap.fromApp);
+      if(!can) return; // disabled; do nothing
+      try{
+        if(backCap.fromHistory && iframe?.contentWindow?.history){
+          iframe.contentWindow.history.back();
+          // history.back may change capability; refresh shortly
+          setTimeout(refreshHistoryCap, 200);
+        } else {
+          iframe?.contentWindow?.postMessage({type:'webos:navigate', action:'back'}, '*');
+        }
+      }catch{
+        try{ iframe?.contentWindow?.postMessage({type:'webos:navigate', action:'back'}, '*'); }catch{}
       }
-    }catch{
-      try{ iframe.contentWindow.postMessage({type:'webos:navigate', action:'back'}, '*'); }catch{}
-    }
-  }); }
+    });
+    // Expose a way for apps to declare SPA back capability
+    node.__updateBackCapFromApp = (val)=>{ backCap.fromApp = !!val; updateBackBtn(); };
+    // Initialize state
+    refreshHistoryCap();
+  }
   if(btnPaneEl){
     if(app.kind === 'pwa'){
       // Hide for PWA: no pane concept
@@ -706,6 +722,8 @@
           const iframe = win?.querySelector('iframe.app-frame');
           if(iframe && iframe.contentWindow){ iframe.contentWindow.postMessage({type:'webos:togglePane'}, '*'); }
         }catch{}
+      } else if(msg.type === 'webos:canGoBack'){
+        try{ if(typeof node.__updateBackCapFromApp === 'function'){ node.__updateBackCapFromApp(!!msg.value); } }catch{}
       }
     });
   }catch{}

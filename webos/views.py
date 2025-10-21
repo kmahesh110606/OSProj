@@ -22,6 +22,7 @@ from datetime import timedelta, datetime, timezone
 import base64
 import re
 from http.cookies import SimpleCookie
+import json as _json
 
 
 @login_required
@@ -304,6 +305,70 @@ def fs_download(request: HttpRequest):
     return resp
 
 
+@login_required
+@require_http_methods(["POST"])
+def fs_download_multi(request: HttpRequest) -> HttpResponse:
+    """Download multiple paths (files and/or folders) as a single zip.
+    Expects JSON body: {"paths": ["/path1", "/path2", ...]}
+    """
+    try:
+        body = request.body.decode('utf-8') or '{}'
+        payload = _json.loads(body)
+        paths = payload.get('paths') or []
+        if not isinstance(paths, list):
+            return HttpResponse('Invalid payload', status=400)
+        paths = [p for p in paths if isinstance(p, str) and p.strip()]
+        if not paths:
+            return HttpResponse('No paths', status=400)
+    except Exception:
+        return HttpResponse('Bad Request', status=400)
+
+    mem = io.BytesIO()
+    with zipfile.ZipFile(mem, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for path in paths:
+            # Normalize
+            if not path.startswith('/'):
+                path = '/' + path
+            # Find entry; for directories, include subtree
+            try:
+                uf = UserFile.objects.get(user=request.user, path=path)
+            except UserFile.DoesNotExist:
+                continue
+            if uf.is_dir:
+                prefix = path.rstrip('/') + '/'
+                base_name = path.strip('/')
+                for entry in UserFile.objects.filter(user=request.user, path__startswith=prefix).order_by('path'):
+                    if entry.is_dir:
+                        continue
+                    rel = entry.path[len(prefix):]
+                    arcname = (base_name + '/' + rel) if base_name else rel
+                    data = entry.content or ''
+                    if data.startswith('B64:'):
+                        try:
+                            buf = base64.b64decode(data[4:])
+                        except Exception:
+                            buf = (data[4:] or '').encode('utf-8', errors='ignore')
+                        zf.writestr(arcname, buf)
+                    else:
+                        zf.writestr(arcname, data)
+            else:
+                # single file
+                name = path.strip('/') or 'file'
+                data = uf.content or ''
+                if data.startswith('B64:'):
+                    try:
+                        buf = base64.b64decode(data[4:])
+                    except Exception:
+                        buf = (data[4:] or '').encode('utf-8', errors='ignore')
+                    zf.writestr(name, buf)
+                else:
+                    zf.writestr(name, data)
+    mem.seek(0)
+    resp = HttpResponse(mem.read(), content_type='application/zip')
+    resp['Content-Disposition'] = 'attachment; filename="download.zip"'
+    return resp
+
+
 def _ensure_dir(user, path: str):
     if not path.endswith('/'):
         path += '/'
@@ -559,10 +624,52 @@ def chat_list_rooms(request: HttpRequest) -> JsonResponse:
 
 @login_required
 def chat_list_conversations(request: HttpRequest) -> JsonResponse:
-    qs = Conversation.objects.filter(members__user=request.user, members__accepted=True).distinct().order_by('-created_at')
+    qs = (Conversation.objects
+          .filter(members__user=request.user, members__accepted=True)
+          .distinct()
+          .order_by('-created_at')
+          .prefetch_related('members__user'))
     rows = []
+    me = request.user
     for c in qs:
-        rows.append({"id": c.id, "kind": c.kind, "title": c.title})
+        title = c.title or ''
+        peer_info = None
+        if c.kind == 'dm':
+            try:
+                # Pick the other accepted member's username as DM title
+                others = [m for m in c.members.all() if m.user_id != me.id and m.accepted]
+                if others:
+                    other_member = others[0]
+                    title = other_member.user.username
+                    # Enrich with avatar and online presence from UserState
+                    try:
+                        st = UserState.objects.filter(user=other_member.user).first()
+                        avatar = None; about = None; online = False
+                        if st and isinstance(st.state_json, dict):
+                            avatar = st.state_json.get('avatar')
+                            about = st.state_json.get('about')
+                            ls = st.state_json.get('last_seen')
+                            try:
+                                import time
+                                now = int(time.time())
+                                ts = int(ls) if isinstance(ls, (int, float, str)) and str(ls).isdigit() else None
+                                if ts is None and isinstance(ls, str):
+                                    # try ISO parse fallback
+                                    from datetime import datetime
+                                    try:
+                                        ts = int(datetime.fromisoformat(ls).timestamp())
+                                    except Exception:
+                                        ts = None
+                                if ts is not None and (now - ts) <= 120:
+                                    online = True
+                            except Exception:
+                                online = False
+                        peer_info = {"username": other_member.user.username, "avatar": avatar, "about": about, "online": online}
+                    except Exception:
+                        peer_info = {"username": other_member.user.username, "avatar": None, "about": None, "online": False}
+            except Exception:
+                pass
+        rows.append({"id": c.id, "kind": c.kind, "title": title, "peer": peer_info})
     return JsonResponse({"items": rows})
 
 
@@ -572,7 +679,11 @@ def chat_list_invites(request: HttpRequest) -> JsonResponse:
     qs = ConversationMember.objects.filter(user=request.user, invited=True, accepted=False).select_related('conversation').order_by('-conversation__created_at')
     items = []
     for m in qs:
-        items.append({"id": m.conversation_id, "title": getattr(m.conversation, 'title', '') or (m.conversation.kind.upper()+f" #{m.conversation_id}")})
+        items.append({
+            "id": m.conversation_id,
+            "title": getattr(m.conversation, 'title', '') or (m.conversation.kind.upper()+f" #{m.conversation_id}"),
+            "kind": m.conversation.kind,
+        })
     return JsonResponse({"items": items})
 
 
@@ -1252,7 +1363,7 @@ def app_html(request: HttpRequest, slug: str) -> HttpResponse:
         return HttpResponse(f"App template not found: {template_name}", status=404)
 
 
-# Account API: GET returns current user info; POST updates username/email/phone
+# Account API: GET returns current user info; POST updates username/email/phone or 'about' in user state
 @login_required
 @require_http_methods(["GET", "POST"])
 def account_api(request: HttpRequest) -> JsonResponse:
@@ -1262,15 +1373,26 @@ def account_api(request: HttpRequest) -> JsonResponse:
         # include avatar (base64 data URL) if present in user state
         st, _ = UserState.objects.get_or_create(user=user)
         avatar = None
+        about = None
         try:
             avatar = (st.state_json or {}).get('avatar')
+            about = (st.state_json or {}).get('about')
         except Exception:
             avatar = None
-        return JsonResponse({"username": user.username, "email": user.email, "phone": getattr(user, 'phone', ''), "avatar": avatar})
+        return JsonResponse({"username": user.username, "email": user.email, "phone": getattr(user, 'phone', ''), "avatar": avatar, "about": about})
     # POST -> update
-    username = request.POST.get('username', '').strip()
-    email = request.POST.get('email', '').strip()
-    phone = request.POST.get('phone', '').strip()
+    username = (request.POST.get('username') or '').strip()
+    email = (request.POST.get('email') or '').strip()
+    phone = (request.POST.get('phone') or '').strip()
+    about = request.POST.get('about')
+    # If only About is being updated, don't require username/email/phone
+    if (username == '' and email == '' and phone == '' and about is not None):
+        st, _ = UserState.objects.get_or_create(user=user)
+        payload = st.state_json if isinstance(st.state_json, dict) else {}
+        payload['about'] = str(about)
+        st.state_json = payload
+        st.save(update_fields=['state_json'])
+        return JsonResponse({"ok": True, "about": payload['about']})
     # Basic validation
     if not username:
         return JsonResponse({"error": "Username required"}, status=400)
@@ -1287,6 +1409,24 @@ def account_api(request: HttpRequest) -> JsonResponse:
         user.phone = phone
     user.save()
     return JsonResponse({"ok": True, "username": user.username, "email": user.email, "phone": getattr(user, 'phone', '')})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def presence_heartbeat(request: HttpRequest) -> JsonResponse:
+    """Record user's presence 'last_seen' timestamp in UserState.state_json.
+    GET or POST will update the timestamp to 'now' (epoch seconds)."""
+    try:
+        st, _ = UserState.objects.get_or_create(user=request.user)
+        payload = st.state_json if isinstance(st.state_json, dict) else {}
+        import time
+        now = int(time.time())
+        payload['last_seen'] = now
+        st.state_json = payload
+        st.save(update_fields=['state_json'])
+        return JsonResponse({"ok": True, "now": now})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 @login_required

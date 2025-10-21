@@ -32,6 +32,29 @@ label{opacity:.85}
     </div>
   </div>
   <div class="board"><canvas id="c"></canvas></div>
+  <!-- Save As modal -->
+  <div id="save-modal" class="app-card" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); align-items:center; justify-content:center; z-index:60">
+    <div class="app-card" style="min-width:560px; max-width:92vw; display:flex; gap:12px">
+      <aside style="width:280px; max-height:60vh; overflow:auto; border-right:1px solid var(--border); padding-right:8px">
+        <div style="font-weight:700; margin-bottom:8px">Select location</div>
+        <ul id="save-tree" class="tree" style="list-style:none; padding-left:0; margin:0"></ul>
+      </aside>
+      <section style="flex:1; display:flex; flex-direction:column; gap:10px">
+        <div>
+          <div style="opacity:.85; font-size:12px; margin-bottom:4px">Folder</div>
+          <input id="save-folder" class="input" readonly />
+        </div>
+        <div>
+          <div style="opacity:.85; font-size:12px; margin-bottom:4px">File name</div>
+          <input id="save-name" class="input" placeholder="untitled.wbdz" />
+        </div>
+        <div class="row" style="justify-content:flex-end; gap:8px; margin-top:6px">
+          <button id="save-cancel" class="btn">Cancel</button>
+          <button id="save-ok" class="btn">Save</button>
+        </div>
+      </section>
+    </div>
+  </div>
   <script>
     const $=s=>document.querySelector(s);
     const canvas=$('#c'), ctx=canvas.getContext('2d');
@@ -53,22 +76,64 @@ label{opacity:.85}
     $('#btn-clear').onclick=()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); };
     function getCsrf(){ const n='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
     async function save(){
-      let name = ($('#wb-name').value||'').trim();
-      if(!name) name = 'whiteboard';
+      // Save As dialog for .wbdz
+      const suggestedName = ($('#wb-name').value||'whiteboard') + (/.wbdz$/i.test($('#wb-name').value||'')? '' : '.wbdz');
+      const fullPath = await openSaveDialog({ folder: '/Whiteboards', name: suggestedName });
+      if(!fullPath) return;
+      const folder = fullPath.replace(/\/[^\/]+$/, '');
       const png = canvas.toDataURL('image/png');
-      const data = { version:1, strokes:[], preview_b64_png: png.replace(/^data:image\/png;base64,/, '') };
-      const path = `/Whiteboards/${name}.wbdz`;
-      // ensure folder and write file
-      try{ await fetch('../api/fs/mkdir',{method:'POST', body:(d=>{const fd=new FormData(); fd.set('path','/Whiteboards'); fd.set('name',''); return fd;})(), headers:{'X-CSRFToken':getCsrf()}}); }catch{}
-      const fd=new FormData(); fd.set('path', path); fd.set('content', JSON.stringify(data));
+  const data = { version:1, strokes:[], preview_b64_png: png.replace(/^data:image\/png;base64,/, '') };
+      // ensure folder path exists (create recursively)
+      await ensureDirs('/', folder.replace(/^\//,'').split('/').filter(Boolean));
+      const fd=new FormData(); fd.set('path', fullPath); fd.set('content', JSON.stringify(data));
       const r=await fetch('../api/fs/write',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
       if(!r.ok){ alert('Save failed'); return; }
-      alert('Saved to '+path);
+      alert('Saved to '+fullPath);
     }
+    async function ensureDirs(base, parts){ if(!parts||!parts.length) return; let cur = base.endsWith('/')? base : (base+'/'); for(const seg of parts){ const fd=new FormData(); fd.set('path', cur); fd.set('name', seg); await fetch('../api/fs/mkdir',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); cur = cur + seg + '/'; } }
     async function exportPng(){ const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download=(($('#wb-name').value||'whiteboard')+'.png'); a.click(); }
     $('#btn-save').onclick=save; $('#btn-export').onclick=exportPng;
-    // If opened with ?path=, load and draw from preview
-    try{ const qs=new URLSearchParams(location.search); pathParam=qs.get('path'); if(pathParam){ const r=await fetch(`../api/fs/read?path=${encodeURIComponent(pathParam)}`); const j=await r.json(); if(j && j.content){ let data=j.content; try{ data = typeof data==='string'? JSON.parse(data) : data; }catch{} const b64=data.preview_b64_png; if(b64){ const img=new Image(); img.onload=()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); }; img.src='data:image/png;base64,'+b64; const nm=String(pathParam).split('/').pop().replace(/\.wbdz$/i,''); $('#wb-name').value = nm; } } }
-    }catch{}
+    // If opened with ?path=, load and draw from preview (avoid top-level await)
+    (async ()=>{
+      try{
+        const qs=new URLSearchParams(location.search); pathParam=qs.get('path'); if(pathParam){ const r=await fetch(`../api/fs/read?path=${encodeURIComponent(pathParam)}`); const j=await r.json(); if(j && j.content){ let data=j.content; try{ data = typeof data==='string'? JSON.parse(data) : data; }catch{} const b64=data.preview_b64_png; if(b64){ const img=new Image(); img.onload=()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0,canvas.width,canvas.height); }; img.src='data:image/png;base64,'+b64; const nm=String(pathParam).split('/').pop().replace(/\.wbdz$/i,''); $('#wb-name').value = nm; } } }
+      }catch{}
+    })();
+
+    // Save As dialog (reusable)
+    function openSaveDialog(opts){
+      opts = opts||{}; const modal = document.getElementById('save-modal'); const tree = document.getElementById('save-tree');
+      const fld = document.getElementById('save-folder'); const nm = document.getElementById('save-name');
+      const btnOk = document.getElementById('save-ok'); const btnCancel = document.getElementById('save-cancel');
+      nm.value = (opts.name||'untitled.wbdz'); let selectedFolder = opts.folder||'/';
+      fld.value = selectedFolder;
+      const renderNode = async (ul, path) =>{
+        const r = await fetch(`../api/fs/list?path=${encodeURIComponent(path)}`); const j = await r.json();
+        const dirs = (j.entries||[]).filter(e=> e.is_dir).sort((a,b)=> a.name.localeCompare(b.name));
+        ul.innerHTML='';
+        for(const d of dirs){
+          const li=document.createElement('li'); li.style.listStyle='none';
+          const row=document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px'; row.style.padding='6px 8px'; row.style.borderRadius='8px'; row.style.cursor='pointer';
+          const tog=document.createElement('span'); tog.textContent='▸'; tog.style.opacity='.8'; tog.style.width='16px'; tog.style.display='inline-flex'; tog.style.justifyContent='center';
+          const lab=document.createElement('span'); lab.textContent=d.name; lab.style.flex='1';
+          row.appendChild(tog); row.appendChild(lab); li.appendChild(row);
+          const kids=document.createElement('ul'); kids.style.listStyle='none'; kids.style.margin='0 0 0 16px'; li.appendChild(kids);
+          let expanded=false;
+          const clickRow = async ()=>{ selectedFolder = d.path; fld.value = selectedFolder; };
+          row.addEventListener('click', clickRow);
+          tog.addEventListener('click', async (ev)=>{ ev.stopPropagation(); if(!expanded){ expanded=true; tog.textContent='▾'; await renderNode(kids, d.path); } else { expanded=false; tog.textContent='▸'; kids.innerHTML=''; } });
+          ul.appendChild(li);
+        }
+      };
+      const openAt = async (p)=>{ selectedFolder = p||'/'; fld.value = selectedFolder; tree.innerHTML=''; const root=document.createElement('li'); const row=document.createElement('div'); row.textContent = (window.USERNAME? `${window.USERNAME}'s Workspace`:'This PC'); row.style.padding='6px 8px'; row.style.fontWeight='700'; root.appendChild(row); const kids=document.createElement('ul'); kids.style.listStyle='none'; kids.style.margin='6px 0 0 0'; root.appendChild(kids); tree.appendChild(root); await renderNode(kids, '/'); };
+      return new Promise((resolve)=>{
+        modal.style.display='flex'; openAt(opts.folder||'/');
+        function done(val){ modal.style.display='none'; btnOk.removeEventListener('click', onOk); btnCancel.removeEventListener('click', onCancel); document.removeEventListener('keydown', onEsc); resolve(val); }
+        function onOk(){ const fname = nm.value.trim()||'untitled.wbdz'; const folder = (fld.value||'/'); const sep = folder.endsWith('/')? '' : '/'; done(folder + sep + fname); }
+        function onCancel(){ done(null); }
+        function onEsc(e){ if(e.key==='Escape'){ e.preventDefault(); done(null); } }
+        btnOk.addEventListener('click', onOk); btnCancel.addEventListener('click', onCancel); document.addEventListener('keydown', onEsc);
+      });
+    }
   </script>
 </body></html>

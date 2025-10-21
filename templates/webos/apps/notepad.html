@@ -7,21 +7,24 @@
   <style>
     :root{
       --np-border: var(--os-border);
-      --np-bg: color-mix(in oklab, var(--os-surface) 100%, transparent);
-      --np-bg-strong: color-mix(in oklab, var(--os-surface-strong) 100%, transparent);
+      --np-bg: color-mix(in oklab, var(--os-surface) 85%, transparent);
+      --np-bg-strong: color-mix(in oklab, var(--os-surface-strong) 90%, transparent);
       --np-text: var(--os-text);
       --np-muted: var(--os-muted);
     }
     body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;background:transparent;color:var(--np-text)}
-    .wrap{display:flex;height:100vh;background:transparent}
-  .list{width:280px;border-right:1px solid var(--np-border);padding:10px;overflow:auto;background:rgba(0,0,0,.06)}
+    .wrap{display:flex;height:100vh;background:color-mix(in oklab, var(--os-surface) 70%, transparent);backdrop-filter:blur(18px) saturate(1.05)}
+  .list{width:280px;min-width:0;border-right:1px solid var(--np-border);padding:10px;overflow:auto;background:color-mix(in oklab, var(--os-surface) 60%, transparent);transition: width var(--anim-med) var(--ease-out), opacity var(--anim-med) var(--ease-out), transform var(--anim-med) var(--ease-out), padding var(--anim-med) var(--ease-out)}
     body.theme-light .list{background:rgba(255,255,255,.5)}
     .editor{flex:1;display:flex;flex-direction:column}
   .editor header{display:flex;gap:10px;align-items:center;padding:10px;border-bottom:1px solid var(--np-border);background:var(--np-bg-strong);flex-wrap:wrap}
     input.title{flex:1;padding:8px 10px;border:1px solid var(--np-border);border-radius:8px;background:#111827;color:var(--np-text)}
     body.theme-light input.title{background:#ffffff}
     textarea{flex:1;padding:12px;border:0;outline:0;font-family:Consolas,monospace;font-size:14px;background:transparent;color:var(--np-text)}
-    button{padding:8px 12px}
+  /* Align icons + text on buttons using shared .os-btn styles */
+  .os-btn{ padding:8px 12px; }
+  .os-btn.os-btn--icon{ display:inline-flex; align-items:center; gap:8px }
+  .tabs .tab .iconify, .toolbar .iconify{ font-size:18px }
   li{list-style:none;padding:8px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:8px}
     li:hover{background:rgba(139,92,246,.08)}
     li.active{background:rgba(139,92,246,.14)}
@@ -29,7 +32,7 @@
     .toolbar{display:flex;gap:8px;margin-bottom:8px}
     .tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
   /* Pane collapse support */
-  .pane-collapsed .list{display:none}
+  .pane-collapsed .list{ width:0; padding-left:0; padding-right:0; opacity:0; transform: translateX(-12px); pointer-events:none }
   .pane-collapsed .editor{width:100%}
     @media (max-width: 720px){
       .editor header{gap:8px}
@@ -37,7 +40,7 @@
       .hint{order:2}
       input.title{order:1;min-width:220px;flex:1}
     }
-    .tabs .tab{padding:8px 12px;border-radius:8px;border:1px solid var(--np-border);background:#1f2937;color:var(--np-text);cursor:pointer;transition:box-shadow .15s, transform .1s}
+    .tabs .tab{padding:8px 12px;border-radius:8px;border:1px solid var(--np-border);background:#1f2937;color:var(--np-text);cursor:pointer;transition:box-shadow .15s, transform .1s; display:inline-flex; align-items:center; gap:8px}
     .tabs .tab:hover{box-shadow:0 6px 16px color-mix(in oklab, var(--os-glow) 25%, transparent), 0 0 0 1px color-mix(in oklab, var(--os-glow) 35%, transparent) inset; transform: translateY(-1px)}
     body.theme-light .tabs .tab{background:#ffffff}
     .tabs .tab.active{outline:2px solid color-mix(in oklab, var(--os-glow) 45%, transparent)}
@@ -54,7 +57,7 @@
   <script src="/static/webos/js/apps-common.js"></script>
   <div class="wrap">
     <aside class="list">
-      <div class="toolbar">
+    <div class="toolbar">
   <button id="new" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:add-20-regular"></span><span>New</span></button>
   <button id="refresh" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:arrow-sync-20-regular"></span><span>Open</span></button>
       </div>
@@ -66,9 +69,9 @@
         <input id="title" class="title" placeholder="/path/to/file.txt" />
         <span class="hint">Use Ctrl+S to save</span>
         <div class="tabs">
-          <button id="tab-edit" class="tab active os-btn"><span class="iconify" data-icon="fluent:edit-20-regular"></span><span>Edit</span></button>
-          <button id="tab-preview" class="tab os-btn"><span class="iconify" data-icon="fluent:eye-20-regular"></span><span>Preview</span></button>
-          <button id="del" class="os-btn" style="background:#ef4444;color:#fff;border-color:#ef4444"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
+          <button id="tab-edit" class="tab active os-btn os-btn--icon"><span class="iconify" data-icon="fluent:edit-20-regular"></span><span>Edit</span></button>
+          <button id="tab-preview" class="tab os-btn os-btn--icon"><span class="iconify" data-icon="fluent:eye-20-regular"></span><span>Preview</span></button>
+          <button id="del" class="os-btn os-btn--icon" style="background:#ef4444;color:#fff;border-color:#ef4444"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
           <button id="save" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:save-20-regular"></span><span>Save</span></button>
         </div>
       </header>
@@ -81,6 +84,29 @@
         </div>
       </div>
     </section>
+  </div>
+  <!-- Save As modal -->
+  <div id="save-modal" class="app-card" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); align-items:center; justify-content:center; z-index:60">
+    <div class="app-card" style="min-width:560px; max-width:92vw; display:flex; gap:12px">
+      <aside style="width:280px; max-height:60vh; overflow:auto; border-right:1px solid var(--np-border); padding-right:8px">
+        <div style="font-weight:700; margin-bottom:8px">Select location</div>
+        <ul id="save-tree" class="tree" style="list-style:none; padding-left:0; margin:0"></ul>
+      </aside>
+      <section style="flex:1; display:flex; flex-direction:column; gap:10px">
+        <div>
+          <div style="opacity:.85; font-size:12px; margin-bottom:4px">Folder</div>
+          <input id="save-folder" class="input" readonly />
+        </div>
+        <div>
+          <div style="opacity:.85; font-size:12px; margin-bottom:4px">File name</div>
+          <input id="save-name" class="input" placeholder="untitled.txt" />
+        </div>
+        <div class="row" style="justify-content:flex-end; gap:8px; margin-top:6px">
+          <button id="save-cancel" class="btn">Cancel</button>
+          <button id="save-ok" class="btn">Save</button>
+        </div>
+      </section>
+    </div>
   </div>
   <!-- Removed external marked.js CDN; provide a minimal fallback parser -->
   <script>
@@ -154,13 +180,18 @@
     }
 
     async function save(){
-      let path = $('#title').value.trim();
-      if(!path){ path = prompt('File path','/untitled.txt')||''; if(!path) return; $('#title').value = path; }
+      // Open Save As dialog
+      const suggested = ($('#title').value||'').trim();
+      const defDir = suggested && suggested.includes('/') ? dirname(suggested) : '/';
+      const defName = suggested ? basename(suggested) : 'untitled.txt';
+      const path = await openSaveDialog({ folder:defDir, name:defName });
+      if(!path) return;
       if(path.endsWith('/')){ alert('Path must be a file (not a folder)'); return; }
       if(!isTxtMd(path)){ const ok = confirm('Save anyway? Only .txt and .md are listed'); if(!ok) return; }
       const fd = new FormData(); fd.set('path', path); fd.set('content', $('#content').value);
-      await fetch('../api/fs/write', {method:'POST', body:fd, headers:{'X-CSRFToken': getCsrf()}});
-      currentPath = path; await lsTxt(dirname(path));
+      const r = await fetch('../api/fs/write', {method:'POST', body:fd, headers:{'X-CSRFToken': getCsrf()}});
+      if(!r.ok){ alert('Save failed'); return; }
+      $('#title').value = path; currentPath = path; await lsTxt(dirname(path));
     }
 
     async function del(){
@@ -199,5 +230,43 @@
         document.body.classList.toggle('pane-collapsed');
       }
     });
+
+    // Save As dialog implementation
+    function openSaveDialog(opts){
+      opts = opts||{}; const modal = document.getElementById('save-modal'); const tree = document.getElementById('save-tree');
+      const fld = document.getElementById('save-folder'); const nm = document.getElementById('save-name');
+      const btnOk = document.getElementById('save-ok'); const btnCancel = document.getElementById('save-cancel');
+      nm.value = (opts.name||'untitled.txt'); let selectedFolder = opts.folder||'/';
+      fld.value = selectedFolder;
+      const renderNode = async (ul, path) =>{
+        const r = await fetch(`../api/fs/list?path=${encodeURIComponent(path)}`); const j = await r.json();
+        const dirs = (j.entries||[]).filter(e=> e.is_dir).sort((a,b)=> a.name.localeCompare(b.name));
+        ul.innerHTML='';
+        for(const d of dirs){
+          const li=document.createElement('li'); li.style.listStyle='none';
+          const row=document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px'; row.style.padding='6px 8px'; row.style.borderRadius='8px'; row.style.cursor='pointer';
+          const tog=document.createElement('span'); tog.textContent='▸'; tog.style.opacity='.8'; tog.style.width='16px'; tog.style.display='inline-flex'; tog.style.justifyContent='center';
+          const lab=document.createElement('span'); lab.textContent=d.name; lab.style.flex='1';
+          row.appendChild(tog); row.appendChild(lab); li.appendChild(row);
+          const kids=document.createElement('ul'); kids.style.listStyle='none'; kids.style.margin='0 0 0 16px'; li.appendChild(kids);
+          let expanded=false;
+          const clickRow = async ()=>{
+            selectedFolder = d.path; fld.value = selectedFolder;
+          };
+          row.addEventListener('click', clickRow);
+          tog.addEventListener('click', async (ev)=>{ ev.stopPropagation(); if(!expanded){ expanded=true; tog.textContent='▾'; await renderNode(kids, d.path); } else { expanded=false; tog.textContent='▸'; kids.innerHTML=''; } });
+          ul.appendChild(li);
+        }
+      };
+      const openAt = async (p)=>{ selectedFolder = p||'/'; fld.value = selectedFolder; tree.innerHTML=''; const root=document.createElement('li'); const row=document.createElement('div'); row.textContent = (window.USERNAME? `${window.USERNAME}'s Workspace`:'This PC'); row.style.padding='6px 8px'; row.style.fontWeight='700'; root.appendChild(row); const kids=document.createElement('ul'); kids.style.listStyle='none'; kids.style.margin='6px 0 0 0'; root.appendChild(kids); tree.appendChild(root); await renderNode(kids, '/'); };
+      return new Promise((resolve)=>{
+        modal.style.display='flex'; openAt(opts.folder||'/');
+        function done(val){ modal.style.display='none'; btnOk.removeEventListener('click', onOk); btnCancel.removeEventListener('click', onCancel); document.removeEventListener('keydown', onEsc); resolve(val); }
+        function onOk(){ const fname = nm.value.trim()||'untitled.txt'; const folder = (fld.value||'/'); const sep = folder.endsWith('/')? '' : '/'; done(folder + sep + fname); }
+        function onCancel(){ done(null); }
+        function onEsc(e){ if(e.key==='Escape'){ e.preventDefault(); done(null); } }
+        btnOk.addEventListener('click', onOk); btnCancel.addEventListener('click', onCancel); document.addEventListener('keydown', onEsc);
+      });
+    }
   </script>
 </body></html>

@@ -1,87 +1,450 @@
 <!doctype html>
-<html><head><meta charset="utf-8">
-<link rel="stylesheet" href="/static/webos/css/apps-common.css">
-<style>
-body.app{height:100vh;display:flex}
-.side{width:260px;border-right:1px solid var(--border);padding:8px;overflow:auto;background:rgba(255,255,255,.04)}
-.pane-collapsed .side{display:none}
-.pane-collapsed .main{width:100%}
-.side .nav{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-.side .nav .item{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:10px;cursor:pointer}
-.side .nav .item.active{background:rgba(255,255,255,.08)}
-.badge{min-width:18px;height:18px;border-radius:999px;background:#ef4444;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;padding:0 6px}
-.main{flex:1;display:flex;flex-direction:column}
-.bar{display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border)}
-.list{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
-.msg{display:flex;gap:8px}
-.msg .me{margin-left:auto}
-.input-row{display:flex;gap:8px;padding:8px;border-top:1px solid var(--border)}
-/* Toast */
-.toast{position:fixed;right:14px;bottom:14px;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
-</style></head>
-<body class="app">
-  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
-  <script src="/static/webos/js/icons.js"></script>
-  <script src="/static/webos/js/apps-common.js"></script>
-  <div class="side app-card">
-    <div class="nav" id="nav">
-      <div class="item active" data-tab="convs"><span class="iconify" data-icon="fluent:chat-20-regular"></span><span>Conversations</span></div>
-      <div class="item" data-tab="invites"><span class="iconify" data-icon="fluent:mail-20-regular"></span><span>Invites</span><span id="badge" class="badge" style="display:none">0</span></div>
+<html>
+  <head>
+    <meta charset="utf-8">
+  <link rel="stylesheet" href="/static/webos/css/apps-common.css">
+  <link rel="stylesheet" href="/static/webos/css/ui.css">
+    <style>
+      body.app{height:100vh;display:flex}
+      .side{width:300px;max-width:90vw;border-right:1px solid var(--border);padding:10px;overflow:auto;background:rgba(255,255,255,.04)}
+      .pane-collapsed .side{display:none}
+      .pane-collapsed .main{width:100%}
+      .side .nav{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+      .side .nav .item{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--border);border-radius:10px;cursor:pointer}
+      .side .nav .item.active{background:rgba(255,255,255,.08)}
+      .badge{min-width:18px;height:18px;border-radius:999px;background:#ef4444;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;padding:0 6px}
+      .section{display:none}
+      .section.active{display:block; animation: appFadeInUp var(--anim-fast) var(--ease-out)}
+      .search{display:flex;gap:8px;margin-bottom:8px}
+      .conv-list{display:flex;flex-direction:column;gap:6px}
+  .conv-item{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:10px;cursor:pointer}
+  .avatar{position:relative;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--border);overflow:hidden;flex:0 0 36px}
+  .avatar img{width:100%;height:100%;object-fit:cover}
+  .dot{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid var(--surface);}
+      .conv-item.active{background:rgba(255,255,255,.06)}
+      .conv-kind{font-size:11px;opacity:.7}
+      .invites{margin-top:12px;border-top:1px dashed var(--border);padding-top:8px}
+      .invite-row{display:flex;align-items:center;gap:8px;margin:6px 0}
+      .main{flex:1;display:flex;flex-direction:column}
+      .bar{display:flex;gap:8px;align-items:center;padding:10px;border-bottom:1px solid var(--border)}
+      .bar .title{font-weight:600;opacity:.9}
+    .list{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+      .anim{ animation: appFadeInUp var(--anim-med) var(--ease-out) }
+      .msg{display:flex;gap:8px}
+      .msg .bubble{max-width:70%;padding:8px 10px;border:1px solid var(--border);border-radius:14px}
+      .msg.me{justify-content:flex-end}
+      .msg.me .bubble{background:rgba(52, 211, 153,.12)}
+  .msg .bubble .meta{margin-top:4px;font-size:11px;opacity:.65;text-align:right}
+    .input-row{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--surface);backdrop-filter:blur(10px)}
+    #msg{flex:1;min-height:40px;max-height:140px;resize:vertical}
+      .placeholder{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);opacity:.8}
+      /* Toast */
+      .toast{position:fixed;right:14px;bottom:14px;z-index:50;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.25)}
+    /* Pane animations */
+    .side, .main{ animation: appFadeInUp var(--anim-med) var(--ease-out) }
+
+      @media (max-width: 820px){
+        body.app{flex-direction:column}
+        .side{width:100%;max-width:100%;border-right:none;border-bottom:1px solid var(--border)}
+      }
+    </style>
+  </head>
+  <body class="app">
+    <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+    <script src="/static/webos/js/icons.js"></script>
+    <script src="/static/webos/js/apps-common.js"></script>
+
+    <div class="side app-card">
+      <div class="nav" id="nav">
+        <div class="item active" data-tab="chats"><span class="iconify" data-icon="fluent:chat-20-regular"></span><span>Chats</span><span id="badge" class="badge" style="display:none;margin-left:auto">0</span></div>
+  <div class="item" data-tab="new"><span class="iconify" data-icon="fluent:add-circle-20-regular"></span><span>New DM</span></div>
+        <div class="item" data-tab="settings"><span class="iconify" data-icon="fluent:settings-20-regular"></span><span>Settings</span></div>
+        <div class="item" data-tab="account"><span class="iconify" data-icon="fluent:person-20-regular"></span><span>Account</span></div>
+      </div>
+
+      <!-- Chats section -->
+      <div class="section active" id="sec-chats">
+        <div class="search">
+          <input id="search" class="input" placeholder="Search chats..." />
+          <button id="btn-clear" class="os-btn os-btn--icon" title="Clear"><span class="iconify" data-icon="fluent:dismiss-20-regular"></span></button>
+        </div>
+        <div class="conv-list" id="convs"></div>
+        <div class="invites">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="iconify" data-icon="fluent:mail-20-regular"></span>
+            <span>Invites</span>
+            <span style="margin-left:auto" class="muted">Pending</span>
+          </div>
+          <div id="invites"></div>
+        </div>
+      </div>
+
+      <!-- New DM section (Rooms removed; managed by Rooms app) -->
+      <div class="section" id="sec-new">
+        <div class="app-card" style="padding:10px;margin-bottom:8px">
+          <div style="font-weight:600;margin-bottom:8px">Start Direct Message</div>
+          <div style="display:flex;gap:8px">
+            <input id="dm-user" class="input" placeholder="Username (case-sensitive)" />
+            <button id="start-dm" class="os-btn"><span class="iconify" data-icon="fluent:send-20-regular"></span><span>&nbsp;Invite</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings section -->
+      <div class="section" id="sec-settings">
+        <div class="app-card" style="padding:10px">
+          <div style="font-weight:600;margin-bottom:8px">Preferences</div>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0">
+            <input type="checkbox" id="pref-enter-send" />
+            <span>Press Enter to send</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0">
+            <input type="checkbox" id="pref-compact" />
+            <span>Compact message bubbles</span>
+          </label>
+          <div class="row" style="margin-top:8px">
+            <button id="pref-apply" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:checkmark-20-regular"></span><span>&nbsp;Apply</span></button>
+            <button id="pref-reset" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:arrow-counterclockwise-20-regular"></span><span>&nbsp;Reset</span></button>
+          </div>
+          <div class="muted" style="opacity:.8;margin-top:8px">Settings are stored locally.</div>
+        </div>
+      </div>
+
+      <!-- Account section -->
+      <div class="section" id="sec-account">
+        <div class="app-card" style="padding:10px">
+          <div style="font-weight:600;margin-bottom:8px">Account</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div>Username: <b id="acct-username">@me</b></div>
+            <label style="display:flex;flex-direction:column;gap:4px">
+              <span>About</span>
+              <textarea id="acct-about" class="input" rows="3" placeholder="Say something about you..."></textarea>
+            </label>
+            <div>
+              <button id="acct-save" class="os-btn os-btn--icon"><span class="iconify" data-icon="fluent:checkmark-20-regular"></span><span>&nbsp;Save</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="convs"></div>
-    <div id="invites" style="display:none"></div>
-  </div>
-  <div class="main">
-    <div class="bar app-card">
-  <input id="dm-user" class="input" placeholder="Start DM with username (case-sensitive)" style="width:220px">
-      <button id="start-dm" class="btn icon"><span class="iconify" data-icon="fluent:send-20-regular"></span><span>Invite</span></button>
-      <div style="margin-left:auto"></div>
-      <div id="cur-title" class="muted" style="opacity:.85"></div>
+
+    <div class="main">
+      <div class="bar app-card">
+        <button id="btn-back" class="os-btn os-btn--icon" title="Back to chats" style="display:none"><span class="iconify" data-icon="fluent:arrow-left-20-regular"></span></button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div id="cur-avatar" class="avatar" style="display:none"></div>
+          <div id="cur-title" class="title"></div>
+        </div>
+        <div style="margin-left:auto"></div>
+        
+      </div>
+      <div id="msgs" class="list app-card" style="margin:8px"></div>
+      <div class="input-row app-card">
+        <input id="msg" class="input" placeholder="Type a message..." />
+        <button id="send" class="os-btn os-btn--icon" title="Send"><span class="iconify" data-icon="fluent:send-20-regular"></span></button>
+      </div>
+      <div id="placeholder" class="placeholder" style="display:none">Select a chat to start messaging</div>
     </div>
-    <div id="msgs" class="list app-card" style="margin:8px"></div>
-    <div class="input-row app-card">
-      <input id="msg" class="input" placeholder="Type a message...">
-      <button id="send" class="btn">Send</button>
-    </div>
-  </div>
-  <script>
-    // Fallback toast if apps-common isn't loaded yet
-    if(typeof window.toast !== 'function'){
-      window.toast = function(msg){ try{ if(typeof showToast==='function') showToast(msg); else alert(msg); }catch(e){ alert(String(msg||'')); } };
-    }
-    const $=s=>document.querySelector(s);
-  function toast(msg){ try{ const t=document.createElement('div'); t.className='toast app-card'; t.textContent=String(msg||''); document.body.appendChild(t); setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(6px)'; setTimeout(()=> t.remove(), 280); }, 1600); }catch(e){} }
-  let cur=null; let curTab='convs'; let convIndex = new Map();
-  async function list(){ const r=await fetch('../api/chat/list'); const j=await r.json(); const host=$('#convs'); host.innerHTML=''; convIndex.clear(); (j.items||[]).forEach(it=>{ convIndex.set(it.id, it); const b=document.createElement('button'); b.className='btn'; b.textContent=it.title||((it.kind==='room'?'Room ':'DM ')+it.id); b.onclick=()=>{ cur=it.id; updateCurTitle(); loadMsgs(); }; host.appendChild(b); }); updateCurTitle(); }
-  async function listInvites(){ const r=await fetch('../api/chat/invites'); const j=await r.json(); const host=$('#invites'); host.innerHTML=''; const items=j.items||[]; if(!items.length){ host.innerHTML='<div class="muted" style="opacity:.8">No invites</div>'; } items.forEach(it=>{ const row=document.createElement('div'); row.style.display='flex'; row.style.gap='8px'; row.style.alignItems='center'; row.style.margin='6px 0'; row.innerHTML = `<span class='iconify' data-icon='fluent:mail-20-regular'></span><span>${it.title||('Invite '+it.id)}</span><span style='margin-left:auto'></span><button class='btn' data-id='${it.id}'>Accept</button>`; row.querySelector('button').onclick=()=> accept(it.id); host.appendChild(row); }); const badge=$('#badge'); badge.style.display = items.length? 'inline-flex':'none'; badge.textContent = items.length; }
-  async function accept(id){ const fd=new FormData(); fd.set('conversation_id', id); await fetch('../api/chat/accept',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); listInvites(); list(); }
-    async function startDM(){
-      const u=$('#dm-user').value.trim(); if(!u) return;
-      if(!confirm(`Send invite to @${u}?`)) return;
-      const fd=new FormData(); fd.set('username', u);
-      const r=await fetch('../api/chat/start_dm',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
-      const j=await r.json();
+
+    <script>
+      // Fallback toast if apps-common isn't loaded yet
+      if(typeof window.toast !== 'function'){
+        window.toast = function(msg){ try{ if(typeof showToast==='function') showToast(msg); else alert(msg); }catch(e){ alert(String(msg||'')); } };
+      }
+      const $=s=>document.querySelector(s);
+      function toast(msg){ try{ const t=document.createElement('div'); t.className='toast app-card'; t.textContent=String(msg||''); document.body.appendChild(t); setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(6px)'; setTimeout(()=> t.remove(), 280); }, 1600); }catch(e){} }
+
+      let cur=null; let curTab='chats'; let convIndex = new Map();
+      let username = '';
+  let lastRenderIds = [];
+  let pendingOutbox = [];
+      let polling=null;
+
+      // Local settings
+      const prefs = {
+        get enterSend(){ return localStorage.getItem('chat.pref.enterSend')==='1'; },
+        set enterSend(v){ localStorage.setItem('chat.pref.enterSend', v?'1':'0'); },
+        get compact(){ return localStorage.getItem('chat.pref.compact')==='1'; },
+        set compact(v){ localStorage.setItem('chat.pref.compact', v?'1':'0'); }
+      };
+
+      function applyPrefs(){
+        $('#pref-enter-send').checked = prefs.enterSend;
+        $('#pref-compact').checked = prefs.compact;
+        document.body.classList.toggle('chat-compact', prefs.compact);
+      }
+
+      async function list(){
+        try{
+          const r=await fetch('../api/chat/list');
+          const j=await r.json();
+          const host=$('#convs'); host.innerHTML=''; convIndex.clear();
+          const q=($('#search').value||'').toLowerCase();
+          (j.items||[]).forEach(it=>{
+            if(it.kind !== 'dm') return; // Only DMs in Chat app
+            convIndex.set(it.id, it);
+            const title = it.title || ((it.kind==='room'?'Room ':'DM ')+it.id);
+            if(q && title.toLowerCase().indexOf(q)===-1) return;
+            const row=document.createElement('div');
+            row.className='conv-item'+(cur===it.id?' active':'');
+            const avatar = it.peer && it.peer.avatar ? `<img src="${it.peer.avatar}" alt="">` : '';
+            const online = it.peer && it.peer.online;
+            row.innerHTML=`
+              <div class="avatar">${avatar}${online?'<span class="dot"></span>':''}</div>
+              <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${title}</div>
+                <div class="conv-kind">${it.kind.toUpperCase()}</div>
+              </div>`;
+            row.onclick=()=>{ cur=it.id; updateCurTitle(); showMain(true); lastRenderIds=[]; pendingOutbox=[]; animateMain(); loadMsgs(true); };
+            host.appendChild(row);
+          });
+          updateCurTitle();
+        }catch(e){ console.error(e); }
+      }
+
+      async function listInvites(){
+        try{
+          const r=await fetch('../api/chat/invites');
+          const j=await r.json();
+          const host=$('#invites'); host.innerHTML='';
+          const items=(j.items||[]).filter(it=> it.kind === 'dm');
+          if(!items.length){ host.innerHTML='<div class="muted" style="opacity:.8">No invites</div>'; }
+          items.forEach(it=>{
+            const row=document.createElement('div');
+            row.className='invite-row';
+            row.innerHTML = `<span class='iconify' data-icon='fluent:mail-20-regular'></span><span>${it.title||('Invite '+it.id)}</span><span style='margin-left:auto'></span><button class='os-btn os-btn--icon' data-id='${it.id}' title='Accept invite'><span class="iconify" data-icon="fluent:checkmark-20-regular"></span><span>&nbsp;Accept</span></button>`;
+            row.querySelector('button').onclick=()=> accept(it.id);
+            host.appendChild(row);
+          });
+          const badge=$('#badge'); badge.style.display = items.length? 'inline-flex':'none'; badge.textContent = items.length;
+        }catch(e){}
+      }
+
+      async function accept(id){
+        const fd=new FormData(); fd.set('conversation_id', id);
+        await fetch('../api/chat/accept',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
+        cur = id; updateCurTitle();
+        listInvites(); list();
+        showMain(true); loadMsgs(true);
+      }
+
+      async function startDM(){
+        const u=$('#dm-user').value.trim(); if(!u) return;
+        const fd=new FormData(); fd.set('username', u);
+        const r=await fetch('../api/chat/start_dm',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
+        const j=await r.json();
         if(!r.ok){ if(j.error==='user not found'){ toast('User not found. Usernames are case-sensitive.'); } else { toast(j.error||'Failed'); } return; }
-      cur=j.conversation_id; list(); listInvites();
-      try{
+        cur=j.conversation_id; list(); listInvites();
+        try{
           if(j.status==='invited'){ toast('Invite sent to '+u); }
           else if(j.status==='already_invited'){ toast('Invite already pending for '+u); }
-        else if(j.status==='exists_accepted' || j.status==='exists'){ toast('Conversation ready'); }
-      }catch(e){}
-      $('#dm-user').value='';
-      loadMsgs();
-    }
-  async function loadMsgs(){ if(!cur) return; const r=await fetch(`../api/chat/${cur}/messages`); const j=await r.json(); const host=$('#msgs'); host.innerHTML=''; (j.items||[]).forEach(m=>{ const row=document.createElement('div'); row.className='msg'; row.innerHTML=`<div ${m.sender===window.USERNAME?'class="me"':''}><b>${m.sender}</b>: ${m.content}</div>`; host.appendChild(row); }); host.scrollTop=host.scrollHeight; }
-  function updateCurTitle(){ try{ const el=$('#cur-title'); if(!el) return; if(!cur){ el.textContent=''; return; } const it = convIndex.get(cur); el.textContent = it? (it.title || (it.kind==='room'?`Room ${cur}`:`DM ${cur}`)) : `#${cur}`; }catch(e){} }
-    async function send(){ if(!cur) return; const txt=$('#msg').value.trim(); if(!txt) return; const fd=new FormData(); fd.set('content', txt); const r=await fetch(`../api/chat/${cur}/send`,{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); if(!r.ok) return; $('#msg').value=''; loadMsgs(); }
-    function getCsrf(){ const n='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
-    // attempt to detect username from parent profile card
-    window.addEventListener('message', (ev)=>{ const msg=ev.data||{}; if(msg.type==='webos:state' && msg.state && msg.state.user){ window.USERNAME = msg.state.user.username; } });
-    document.getElementById('nav').addEventListener('click', (e)=>{ const it=e.target.closest('.item'); if(!it) return; document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n===it)); curTab=it.dataset.tab; $('#convs').style.display = (curTab==='convs')?'':'none'; $('#invites').style.display = (curTab==='invites')?'':'none'; });
-  // Listen for pane toggle and launch params from shell
-  window.addEventListener('message', (ev)=>{ const msg=ev.data||{}; if(msg.type==='webos:togglePane'){ document.body.classList.toggle('pane-collapsed'); }
-  if(msg.type==='webos:params' && msg.params){ try{ if(msg.params.roomId){ cur = Number(msg.params.roomId); updateCurTitle(); loadMsgs(); } }catch(e){} }
-  });
-    list(); listInvites(); setInterval(()=>{ if(cur) loadMsgs(); listInvites(); }, 3000);
-  </script>
-</body></html>
+          else if(j.status==='exists_accepted' || j.status==='exists'){ toast('Conversation ready'); }
+        }catch(e){}
+        $('#dm-user').value='';
+        updateCurTitle();
+        showMain(true);
+        loadMsgs(true);
+      }
+
+
+      async function loadMsgs(initial){
+        if(!cur){ showPlaceholder(true); return; }
+        try{
+          const r=await fetch(`../api/chat/${cur}/messages`);
+          if(!r.ok){ showPlaceholder(true); if(r.status===403) toast('No access to this conversation'); return; }
+          const j=await r.json();
+          const host=$('#msgs');
+          const items = j.items||[];
+          if(initial){ host.innerHTML=''; lastRenderIds=[]; pendingOutbox=[]; }
+          // Append only new messages
+          for(const m of items){
+            if(lastRenderIds.includes(m.id)) continue;
+            const row=document.createElement('div');
+            const isMe = (m.sender===username);
+            row.className='msg'+(isMe?' me':'');
+            const localTime = formatTime(m.at);
+            // If this is my message, try to reconcile with an optimistic pending bubble
+            if(isMe && pendingOutbox.length){
+              try{
+                const atServer = new Date(m.at).getTime();
+                const idx = pendingOutbox.findIndex(p=>{
+                  const dt = Math.abs((p.at||0) - atServer);
+                  return p.content === m.content && dt <= 15000; // 15s window
+                });
+                if(idx>=0){ const p = pendingOutbox[idx]; if(p.el && p.el.parentNode){ p.el.parentNode.removeChild(p.el); } pendingOutbox.splice(idx,1); }
+              }catch{}
+            }
+            row.innerHTML=`<div class="bubble" title="${formatFull(m.at)}"><div style="font-weight:600;opacity:.9">${m.sender}</div><div>${escapeHtml(m.content)}</div><div class="meta">${localTime}</div></div>`;
+            host.appendChild(row);
+            lastRenderIds.push(m.id);
+          }
+          // Trim tracking to a reasonable length
+          if(lastRenderIds.length>500) lastRenderIds=lastRenderIds.slice(-300);
+          autoScroll(host, initial);
+          showPlaceholder(false);
+          updateInviteButton();
+        }catch(e){ console.error(e); }
+      }
+
+      function updateInviteButton(){
+        const it = cur? convIndex.get(cur): null;
+        const show = !!(it && it.kind==='room');
+        const btn = $('#btn-invite');
+        if(btn) btn.style.display = show? '' : 'none';
+      }
+
+      function updateCurTitle(){
+        try{
+          const el=$('#cur-title'); const av=$('#cur-avatar'); if(!el) return;
+          if(!cur){ el.textContent=''; if(av){ av.style.display='none'; av.innerHTML=''; } return; }
+          const it = convIndex.get(cur);
+          el.textContent = it? (it.title || (it.kind==='room'?`Room ${cur}`:`DM ${cur}`)) : `#${cur}`;
+          if(av && it && it.peer){
+            av.style.display='';
+            av.innerHTML = (it.peer.avatar?`<img src="${it.peer.avatar}">`:'') + (it.peer.online?'<span class="dot"></span>':'');
+          }
+          updateInviteButton();
+        }catch(e){}
+      }
+
+      async function send(){
+        if(!cur) return; const txt=$('#msg').value.trim(); if(!txt) return;
+        // Optimistic append
+  const host=$('#msgs'); const tempId = 'tmp:'+Date.now();
+  const row=document.createElement('div'); row.className='msg me'; row.dataset.pending='1';
+        const now = new Date();
+        row.innerHTML=`<div class="bubble" title="${formatFull(now)}"><div style="font-weight:600;opacity:.9">${username||'Me'}</div><div>${escapeHtml(txt)}</div><div class="meta">${formatTime(now)}</div></div>`;
+        host.appendChild(row); host.scrollTop=host.scrollHeight;
+        // Track this optimistic bubble to reconcile once server echoes it back
+        try{ pendingOutbox.push({ content: txt, at: now.getTime(), el: row }); if(pendingOutbox.length>10) pendingOutbox.shift(); }catch{}
+        $('#msg').value='';
+        try{
+          const fd=new FormData(); fd.set('content', txt);
+          const r=await fetch(`../api/chat/${cur}/send`,{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
+          if(!r.ok){ toast('Send failed'); }
+          // Refresh to get canonical ids/order
+          await loadMsgs(!lastRenderIds.length);
+        }catch(e){ toast('Send failed'); }
+      }
+
+      function getCsrf(){ const n='csrftoken='; const c=(document.cookie||'').split(';').find(c=>c.trim().startsWith(n)); return c?decodeURIComponent(c.split('=')[1]):''; }
+
+      // Utility
+      function autoScroll(host, force){
+        try{
+          const nearBottom = (host.scrollHeight - host.scrollTop - host.clientHeight) < 60;
+          if(force || nearBottom){ host.scrollTop = host.scrollHeight; }
+        }catch(e){}
+      }
+      function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    function formatTime(t){ try{ const d = (t instanceof Date)? t : new Date(t); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }catch(e){ return ''; } }
+    function formatFull(t){ try{ const d = (t instanceof Date)? t : new Date(t); return d.toLocaleString(); }catch(e){ return ''; } }
+
+      function showMain(show){
+        // On small screens, show/hide messages area
+        const back=$('#btn-back');
+        if(window.matchMedia('(max-width: 820px)').matches){
+          $('.side').style.display = show? 'none': '';
+          $('.main').style.display = show? '' : 'none';
+          back.style.display = show? '' : 'none';
+        } else {
+          $('.side').style.display = '';
+          $('.main').style.display = '';
+          back.style.display = 'none';
+        }
+      }
+      function showPlaceholder(show){ $('#placeholder').style.display = show? '' : 'none'; }
+
+      // Animate the main pane (header and messages) when switching chats
+      function animateMain(){ try{ const elems=[document.querySelector('.bar'), document.getElementById('msgs')]; elems.forEach(el=>{ if(!el) return; el.classList.remove('anim'); void el.offsetWidth; el.classList.add('anim'); setTimeout(()=> el.classList.remove('anim'), 320); }); }catch(e){} }
+
+      // Left nav switching
+      // Icon map for nav tabs (regular <-> filled)
+      const NAV_ICONS = {
+        chats: { regular: 'fluent:chat-20-regular', filled: 'fluent:chat-20-filled' },
+        new: { regular: 'fluent:add-circle-20-regular', filled: 'fluent:add-circle-20-filled' },
+        settings: { regular: 'fluent:settings-20-regular', filled: 'fluent:settings-20-filled' },
+        account: { regular: 'fluent:person-20-regular', filled: 'fluent:person-20-filled' }
+      };
+      function updateNavIcons(){
+        document.querySelectorAll('.side .item').forEach(n=>{
+          const tab = n.dataset.tab;
+          const ico = n.querySelector('.iconify');
+          if(!ico || !NAV_ICONS[tab]) return;
+          ico.setAttribute('data-icon', n.classList.contains('active')? NAV_ICONS[tab].filled : NAV_ICONS[tab].regular);
+        });
+      }
+
+      document.getElementById('nav').addEventListener('click', (e)=>{
+        const it=e.target.closest('.item'); if(!it) return;
+        document.querySelectorAll('.side .item').forEach(n=>n.classList.toggle('active', n===it));
+        curTab=it.dataset.tab;
+        document.querySelectorAll('.side .section').forEach(s=> s.classList.remove('active'));
+        $('#sec-'+curTab).classList.add('active');
+        updateNavIcons();
+        if(curTab==='chats'){ list(); listInvites(); }
+      });
+
+      // Buttons
+      $('#btn-clear').addEventListener('click', ()=>{ $('#search').value=''; list(); });
+      $('#search').addEventListener('input', ()=> list());
+      $('#start-dm').addEventListener('click', startDM);
+      // Removed room handlers to keep Chat separate
+      $('#send').addEventListener('click', send);
+      $('#msg').addEventListener('keydown', (e)=>{
+        if(e.key==='Enter' && !e.shiftKey && prefs.enterSend){ e.preventDefault(); send(); }
+      });
+      // Auto-resize message box
+      function autoResize(e){ e.target.style.height='auto'; e.target.style.height=Math.min(140, e.target.scrollHeight)+'px'; }
+      $('#msg').addEventListener('input', autoResize);
+      $('#pref-enter-send').addEventListener('change', (e)=>{ prefs.enterSend = e.target.checked; });
+      $('#pref-compact').addEventListener('change', (e)=>{ prefs.compact = e.target.checked; applyPrefs(); });
+  $('#pref-apply').addEventListener('click', ()=>{ applyPrefs(); toast('Settings applied'); });
+  $('#pref-reset').addEventListener('click', ()=>{ prefs.enterSend=false; prefs.compact=false; applyPrefs(); toast('Settings reset'); });
+      $('#acct-save').addEventListener('click', async ()=>{
+        const about = $('#acct-about').value||'';
+        // Save locally for instant UI; also persist to server
+        localStorage.setItem('chat.acct.about', about);
+        try{
+          const fd=new FormData(); fd.set('about', about);
+          const r=await fetch('../api/account',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}});
+          if(!r.ok){ const j=await r.json().catch(()=>({})); toast(j.error||'Save failed'); }
+          else toast('Saved');
+        }catch(e){ toast('Save failed'); }
+      });
+      $('#btn-back').addEventListener('click', ()=>{ showMain(false); });
+
+      // Username detection from host shell
+      window.addEventListener('message', (ev)=>{ const msg=ev.data||{}; if(msg.type==='webos:state' && msg.state && msg.state.user){ username = msg.state.user.username||''; $('#acct-username').textContent = '@'+username; }
+        if(msg.type==='webos:togglePane'){ document.body.classList.toggle('pane-collapsed'); }
+        // Chat app: ignore roomId param to keep separation from Rooms app
+      });
+
+      // Init
+  (async function init(){
+        applyPrefs();
+        try{
+          const r=await fetch('../api/account'); const j=await r.json();
+          username = j.username || username; $('#acct-username').textContent='@'+(username||'');
+          $('#acct-about').value = (j.about!=null? j.about: (localStorage.getItem('chat.acct.about')||''));
+        }catch(e){ $('#acct-about').value = localStorage.getItem('chat.acct.about')||''; }
+        // Default: show chats, list & invites, and polling
+        list(); listInvites();
+        if(polling) clearInterval(polling);
+  polling = setInterval(()=>{ if(cur) loadMsgs(false); listInvites(); }, 3000);
+        // If no chat selected initially, show placeholder
+        showPlaceholder(true);
+        // Ask shell for user state so username is known ASAP
+        try{ window.parent && window.parent.postMessage({type:'webos:getState'}, '*'); }catch{}
+        // Background presence heartbeat
+        try{
+          // Initial heartbeat and then every 60s
+          fetch('../api/presence/heartbeat', {method:'POST', headers:{'X-CSRFToken':getCsrf()}}).catch(()=>{});
+          setInterval(()=>{ fetch('../api/presence/heartbeat', {method:'POST', headers:{'X-CSRFToken':getCsrf()}}).catch(()=>{}); }, 60000);
+        }catch{}
+        // Refresh conversations periodically to update presence/avatars
+        try{ setInterval(()=>{ if(curTab==='chats') list(); }, 15000); }catch{}
+      })();
+    </script>
+  </body>
+</html>

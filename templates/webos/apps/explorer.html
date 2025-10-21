@@ -19,26 +19,41 @@
 body.theme-light .tree .node:hover{background:rgba(0,0,0,.06)}
 body.theme-light .tree .node.active{background:rgba(0,0,0,.08)}
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-.bar{display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--border)}
+.bar{display:flex;gap:8px;padding:8px;border-bottom:1px solid var(--border); align-items:center}
 .bar input{flex:1}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,170px);gap:16px;padding:16px;overflow:auto;flex:1;justify-content:flex-start}
-.item{background:rgba(31,41,55,.6);backdrop-filter:blur(8px);border:1px solid #374151;border-radius:8px;padding:12px;cursor:pointer;width:160px;height:160px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
-.name{margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.item img{width:100%;height:100px;object-fit:cover;border-radius:6px;display:block}
-.item .thumb{width:100%;height:100px;display:flex;align-items:center;justify-content:center;font-size:42px}
+.grid{display:grid;gap:18px 16px;padding:16px;overflow:auto;flex:1;justify-content:flex-start}
+.view-list .grid{display:block}
+/* Fixed-size tiles in grid (non-list) mode */
+body:not(.view-list) .grid{grid-template-columns:repeat(auto-fill,160px); grid-auto-rows:200px}
+.item{background:rgba(31,41,55,.6);backdrop-filter:blur(8px);border:1px solid #374151;border-radius:10px;padding:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;user-select:none}
+body:not(.view-list) .item{width:160px; height:200px; box-sizing:border-box}
+.item .tile{width:100%;aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgba(0,0,0,.1)}
+body:not(.view-list) .item .tile{aspect-ratio:auto; height:120px}
+.grid{gap:22px 22px}
+.name{margin-top:10px;min-height:1.2em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item img{width:100%;height:100%;object-fit:cover;display:block}
+.item .thumb{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:38px}
 .item.selected{transform:scale(1.03);box-shadow:0 0 0 2px rgba(96,165,250,.8) inset}
 .item.selected .name{font-weight:600}
 .ribbon{position:sticky;top:0;z-index:5;display:flex;gap:12px;align-items:center;padding:8px;border-bottom:1px solid #374151;background:var(--surface);backdrop-filter:blur(14px)}
 .rb-more{margin-left:auto;position:relative}
-.rb-menu{position:absolute;right:0;top:100%;margin-top:6px;z-index:10;display:none;min-width:180px}
-.rb-menu .menu-btn{display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:8px;border-radius:8px}
+.rb-menu{position:absolute;right:0;top:100%;margin-top:6px;z-index:10;display:none;min-width:180px;max-width:70vw;backdrop-filter:blur(14px) saturate(1.05); background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:6px}
+.rb-menu .menu-btn{display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:8px;border-radius:8px;background:transparent;border:0;color:inherit}
+.rb-menu .menu-btn:hover{background:rgba(255,255,255,.06)}
+.rb-upload{position:relative}
+.upload-menu{position:absolute;left:0;top:100%;margin-top:6px;z-index:10;display:none;min-width:190px}
+.upload-menu .menu-btn{display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:8px;border-radius:8px;background:transparent;border:0;color:inherit}
+.upload-menu .menu-btn:hover{background:rgba(255,255,255,.06)}
 .ribbon .btn{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:80px}
 .ribbon .btn .iconify{font-size:20px}
-.ctx{position:absolute;display:none;z-index:10;background:rgba(31,41,55,.9);backdrop-filter:blur(10px);border:1px solid #374151;border-radius:10px;padding:6px;min-width:180px}
-.ctx .menu-btn{display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:8px;border-radius:8px}
+.ctx{position:absolute;display:none;z-index:10;background:var(--surface);backdrop-filter:blur(14px) saturate(1.05);border:1px solid var(--border);border-radius:12px;padding:6px;min-width:180px}
+.ctx .menu-btn{display:flex;gap:8px;align-items:center;width:100%;text-align:left;padding:8px;border-radius:8px;background:transparent;border:0;color:inherit}
 .ctx .menu-btn .iconify{font-size:18px;opacity:.9}
 .ctx .menu-btn:hover{background:rgba(255,255,255,.06)}
-.pane-collapsed .side{display:none}
+/* Pane collapse animation */
+.wrap{--side-w:280px}
+.side{width:var(--side-w);transition: width .22s var(--ease-in-out), padding .22s var(--ease-in-out), border-color .22s var(--ease-in-out)}
+.pane-collapsed .side{width:0; padding:0; border-color: transparent}
 .pane-collapsed .main{width:100%}
 /* Only side and grid scroll; app fills viewport */
 body.app{height:100vh;display:flex;flex-direction:column}
@@ -46,6 +61,29 @@ body.app{height:100vh;display:flex;flex-direction:column}
 .side{overflow:auto}
 .main{overflow:hidden}
 .grid{overflow:auto}
+/* List view mode */
+.view-list .grid{display:block}
+.view-list .item{flex-direction:row; align-items:center; gap:14px; padding:12px; margin-bottom:10px}
+.view-list .item .tile{width:42px; min-width:42px; height:42px; aspect-ratio:auto}
+.view-list .name{margin-top:0}
+/* Breadcrumb */
+.breadcrumb{display:flex;align-items:center;gap:6px;max-width:100%;min-width:120px;overflow:hidden}
+.crumb{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.crumb:hover{background:rgba(255,255,255,.06)}
+.crumb.sep{cursor:default;padding:0}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)}}
+.breadcrumb.anim{animation:fadeSlide .22s var(--ease-in-out)}
+/* Breadcrumb + search overlay */
+#bc-wrap{ position:relative; flex:1 1 auto; min-width:0 }
+#search-wrap{ position:absolute; left:0; right:0; top:0; display:none }
+#bc-wrap.search-open #search-wrap{ display:block }
+#bc-wrap.search-open #breadcrumb{ visibility:hidden }
+/* Small screens: breadcrumb shows only last/current folder */
+@media (max-width: 720px){
+  .breadcrumb .crumb{ display:none }
+  .breadcrumb .crumb:last-of-type{ display:inline-flex }
+  .breadcrumb .sep{ display:none }
+}
 @media (max-width:720px){ .side{width:200px} }
 </style></head>
 <body class="app">
@@ -53,11 +91,22 @@ body.app{height:100vh;display:flex;flex-direction:column}
   <script src="/static/webos/js/icons.js"></script>
   <script src="/static/webos/js/apps-common.js"></script>
   <div class="ribbon app-card">
+    <div class="rb-upload">
+      <button id="btn-upload" class="btn"><span class="iconify" data-icon="fluent:arrow-upload-20-regular"></span><span>Upload</span></button>
+      <menu id="upload-menu" class="app-card upload-menu">
+        <button class="menu-btn" id="upload-files-opt"><span class="iconify" data-icon="fluent:document-add-20-regular"></span><span>Upload files</span></button>
+        <button class="menu-btn" id="upload-folder-opt"><span class="iconify" data-icon="fluent:folder-20-regular"></span><span>Upload folder</span></button>
+      </menu>
+    </div>
+    <button id="mk" class="btn"><span class="iconify" data-icon="fluent:folder-add-20-regular"></span><span>New Folder</span></button>
+    <button id="newfile" class="btn"><span class="iconify" data-icon="fluent:document-add-20-regular"></span><span>New File</span></button>
     <button id="btn-download" class="btn"><span class="iconify" data-icon="fluent:arrow-download-20-regular"></span><span>Download</span></button>
     <button id="btn-rename" class="btn"><span class="iconify" data-icon="fluent:rename-20-regular"></span><span>Rename</span></button>
     <button id="btn-cut" class="btn"><span class="iconify" data-icon="fluent:cut-20-regular"></span><span>Cut</span></button>
     <button id="btn-copy" class="btn"><span class="iconify" data-icon="fluent:copy-20-regular"></span><span>Copy</span></button>
     <button id="btn-paste" class="btn"><span class="iconify" data-icon="fluent:clipboard-paste-20-regular"></span><span>Paste</span></button>
+    <button id="btn-sort" class="btn"><span class="iconify" data-icon="fluent:arrow-sort-20-regular"></span><span>Sort</span></button>
+    <button id="btn-view" class="btn"><span class="iconify" data-icon="fluent:apps-list-20-regular"></span><span>View</span></button>
     <button id="btn-delete" class="btn"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
     <div class="rb-more">
       <button id="rb-more" class="btn"><span class="iconify" data-icon="fluent:more-horizontal-20-regular"></span><span>More</span></button>
@@ -70,13 +119,18 @@ body.app{height:100vh;display:flex;flex-direction:column}
       <ul id="tree-root" class="tree"></ul>
     </aside>
     <section class="main">
-      <div class="bar app-card">
-        <button id="up" class="btn">Up</button>
-        <input id="path" class="input" value="/" />
-        <button id="mk" class="btn">New Folder</button>
-        <button id="newfile" class="btn">New File</button>
-        <input type="file" id="upload-input" style="display:none" />
-        <button id="upload" class="btn">Upload</button>
+      <div id="top-bar" class="bar app-card" style="gap:10px; align-items:center">
+        <button id="btn-back" class="btn"><span class="iconify" data-icon="fluent:arrow-left-20-regular"></span></button>
+        <button id="btn-forward" class="btn"><span class="iconify" data-icon="fluent:arrow-right-20-regular"></span></button>
+        <div id="bc-wrap">
+          <nav id="breadcrumb" class="breadcrumb"></nav>
+          <div id="search-wrap">
+            <input id="search" class="input" placeholder="Search" />
+          </div>
+        </div>
+        <button id="btn-search" class="btn" title="Search"><span class="iconify" data-icon="fluent:search-20-regular"></span></button>
+  <input type="file" id="upload-input" multiple style="display:none" />
+  <input type="file" id="upload-folder-input" webkitdirectory directory multiple style="display:none" />
       </div>
       <div class="grid" id="grid"></div>
     </section>
@@ -89,56 +143,124 @@ body.app{height:100vh;display:flex;flex-direction:column}
     <button class="menu-btn" data-act="paste"><span class="iconify" data-icon="fluent:clipboard-paste-20-regular"></span><span>Paste</span></button>
     <button class="menu-btn" data-act="delete" style="color:#ef4444"><span class="iconify" data-icon="fluent:delete-20-regular"></span><span>Delete</span></button>
   </menu>
+  <div id="modal-unsupported" class="app-card" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); align-items:center; justify-content:center; z-index:50">
+    <div class="app-card" style="min-width:280px; max-width:90vw">
+      <div style="font-weight:700; margin-bottom:6px">Unsupported file type</div>
+      <div style="opacity:.85">Preview/edit not available yet for this file type. You can Upload/Download it. Opening and editing coming soon.</div>
+      <div class="row" style="justify-content:flex-end; margin-top:10px">
+        <button id="unsup-close" class="btn">OK</button>
+        <button id="unsup-download" class="btn">Download</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-prompt" class="app-card" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); align-items:center; justify-content:center; z-index:50">
+    <div class="app-card" style="min-width:320px; max-width:90vw">
+      <div id="prompt-title" style="font-weight:700; margin-bottom:6px">Enter value</div>
+      <div><input id="prompt-input" class="input" placeholder="" /></div>
+      <div class="row" style="justify-content:flex-end; margin-top:10px; gap:8px">
+        <button id="prompt-cancel" class="btn">Cancel</button>
+        <button id="prompt-ok" class="btn">OK</button>
+      </div>
+    </div>
+  </div>
   <script>
   const $=s=>document.querySelector(s);
     let cwd='/';
-    let selected=null; let selectedPath=null; let clipboard=null; // {op:'copy'|'move', src}
+    let selected=null; let selectedPath=null; let clipboard=null; // legacy single
+    let selection=new Set(); // multiple selected paths
+    let viewMode='tiles'; // 'tiles' | 'list'
+    let sortBy='name'; let sortDir=1; // 1 asc, -1 desc
+    let searchQuery='';
+    let navHistory=['/']; let navIndex=0;
+    function updateNavButtons(){ const back=$('#btn-back'), fwd=$('#btn-forward'); if(back){ back.disabled = navIndex<=0; } if(fwd){ fwd.disabled = navIndex>=(navHistory.length-1); } }
+    function navigateTo(path, opts){ opts=opts||{}; if(!path) path='/'; if(!path.startsWith('/')) path='/'+path; if(cwd===path && !opts.force){ return; } cwd=path; if(opts.addToHistory!==false){ // normal push
+        // drop forward stack
+        if(navIndex < navHistory.length-1) navHistory = navHistory.slice(0, navIndex+1);
+        navHistory.push(cwd); navIndex = navHistory.length-1;
+      }
+      updateNavButtons(); ls(); }
+    function navigateBack(){ if(navIndex>0){ navIndex--; cwd = navHistory[navIndex]; updateNavButtons(); ls(); } }
+    function navigateForward(){ if(navIndex < navHistory.length-1){ navIndex++; cwd = navHistory[navIndex]; updateNavButtons(); ls(); } }
     function hideCtx(){ const m=$('#ctx'); m.style.display='none'; }
     function showCtx(x,y){ const m=$('#ctx'); m.style.left=x+'px'; m.style.top=y+'px'; m.style.display='block'; }
     document.addEventListener('click', (e)=>{ const m=$('#ctx'); if(m.style.display==='block' && !m.contains(e.target)) hideCtx(); });
+    function isImageName(n){ return /(png|jpg|jpeg|gif|webp|bmp)$/i.test(n||''); }
+    function isTextName(n){ return /(txt|md)$/i.test(n||''); }
+    function isWhiteboardName(n){ return /\.wbdz$/i.test(n||''); }
+    function isSupportedOpen(n){ return isImageName(n) || isTextName(n) || isWhiteboardName(n); }
+    function clearSelection(){ selection.clear(); document.querySelectorAll('.item.selected').forEach(el=>el.classList.remove('selected')); selected=null; selectedPath=null; }
     async function ls(){
       const r = await fetch(`../api/fs/list?path=${encodeURIComponent(cwd)}`);
       const data = await r.json();
-  const g=$('#grid'); g.innerHTML='';
-      (data.entries||[]).forEach(e=>{
+      let ents = (data.entries||[]).slice().sort((a,b)=>{
+        if(a.is_dir && !b.is_dir) return -1; if(!a.is_dir && b.is_dir) return 1;
+        if(sortBy==='name'){ return sortDir * a.name.localeCompare(b.name); }
+        return 0;
+      });
+      if(searchQuery){ const q=searchQuery.toLowerCase(); ents = ents.filter(e=> (e.name||'').toLowerCase().includes(q)); }
+      const g=$('#grid'); g.innerHTML='';
+      ents.forEach(e=>{
         const d=document.createElement('div'); d.className='item';
         d.dataset.path=e.path; d.dataset.dir=e.is_dir? '1':'0';
         d.dataset.name=e.name;
-        if(!e.is_dir && /(png|jpg|jpeg|gif|webp|bmp)$/i.test(e.name)){
+        let tileHtml='';
+        if(!e.is_dir && isImageName(e.name)){
           // image thumb
           fetch(`../api/fs/read?path=${encodeURIComponent(e.path)}`).then(r=>r.json()).then(j=>{
             const url = j.is_base64? `data:;base64,${j.content}` : `data:text/plain;base64,${btoa(j.content||'')}`;
-            d.innerHTML=`<img src="${url}"><div class="name">${e.name}</div>`;
+            d.querySelector('.tile').innerHTML = `<img src="${url}">`;
           });
-        } else if(!e.is_dir && /\.wbdz$/i.test(e.name)){
+          tileHtml = `<div class="tile"><div class="thumb">🖼️</div></div><div class="name">${e.name}</div>`;
+        } else if(!e.is_dir && isWhiteboardName(e.name)){
           // whiteboard preview if available
           fetch(`../api/fs/read?path=${encodeURIComponent(e.path)}`).then(r=>r.json()).then(j=>{
             try{
               const data = typeof j.content==='string' ? JSON.parse(j.content) : j.content;
               const b64 = data && data.preview_b64_png;
-              if(b64){ d.innerHTML=`<img src="data:image/png;base64,${b64}"><div class="name">${e.name}</div>`; return; }
+              if(b64){ d.querySelector('.tile').innerHTML = `<img src="data:image/png;base64,${b64}">`; return; }
             }catch{}
-            d.innerHTML=`<div class="thumb">📝</div><div class="name">${e.name}</div>`;
+            d.querySelector('.tile').innerHTML = `<div class="thumb">📝</div>`;
           }).catch(()=>{ d.innerHTML=`<div class="thumb">📝</div><div class="name">${e.name}</div>`; });
+          tileHtml = `<div class="tile"><div class="thumb">📝</div></div><div class="name">${e.name}</div>`;
         } else {
-          d.innerHTML=`<div class="thumb">${e.is_dir?'📁':'📄'}</div><div class="name">${e.name}</div>`;
+          tileHtml = `<div class="tile"><div class="thumb">${e.is_dir?'📁':'📄'}</div></div><div class="name">${e.name}</div>`;
         }
-        d.addEventListener('click', ()=>{
-          // select only
-          document.querySelectorAll('.item.selected').forEach(el=>el.classList.remove('selected'));
-          d.classList.add('selected'); selected=e; selectedPath=e.path;
+        d.innerHTML = tileHtml;
+        d.addEventListener('click', (ev)=>{
+          if(ev.ctrlKey || ev.metaKey){
+            const was = selection.has(e.path);
+            if(was){ selection.delete(e.path); d.classList.remove('selected'); }
+            else { selection.add(e.path); d.classList.add('selected'); }
+          } else {
+            clearSelection();
+            selection.add(e.path); d.classList.add('selected');
+          }
+          selected=e; selectedPath=e.path;
         });
         d.addEventListener('dblclick', ()=>{
-          if(e.is_dir){ cwd=e.path; $('#path').value=cwd; ls(); }
+          if(e.is_dir){ navigateTo(e.path); }
           else {
-            if(/\.(png|jpg|jpeg|gif|webp|bmp)$/i.test(e.name)){ openImage(e.path); }
-            else if(/\.wbdz$/i.test(e.name)){
+            if(isImageName(e.name)){ openImage(e.path); }
+            else if(isWhiteboardName(e.name)){
               try{ window.parent.postMessage({type:'webos:launch', app:{slug:'whiteboard', kind:'builtin', path:`apps/whiteboard`}, params:{path:e.path}, focus:true}, '*'); }catch(err){ openFile(e.path); }
             }
-            else { openFile(e.path); }
+            else if(isTextName(e.name)) { openFile(e.path); }
+            else { showUnsupported(e.path); }
           }
         });
         d.oncontextmenu=(ev)=>{ ev.preventDefault(); selected=e; showCtx(ev.clientX, ev.clientY); };
+        // Drag & drop move between folders
+        d.setAttribute('draggable','true');
+        d.addEventListener('dragstart', (ev)=>{
+          const paths = selection.size? Array.from(selection) : [e.path];
+          ev.dataTransfer.setData('text/plain', JSON.stringify(paths));
+        });
+        d.addEventListener('dragover', (ev)=>{ if(e.is_dir){ ev.preventDefault(); } });
+        d.addEventListener('drop', async (ev)=>{
+          if(!e.is_dir) return; ev.preventDefault();
+          const data = ev.dataTransfer.getData('text/plain');
+          try{ const paths = JSON.parse(data)||[]; for(const src of paths){ await moveOne(src, e.path); } ls(); }catch{}
+        });
         if(selectedPath && selectedPath===e.path){ d.classList.add('selected'); }
         g.appendChild(d);
 
@@ -175,23 +297,23 @@ body.app{height:100vh;display:flex;flex-direction:column}
       }
       async function expand(){ if(!isDir) return; await load(); expanded=true; children.style.display='block'; tog.textContent='▾'; }
       function collapse(){ if(!isDir) return; expanded=false; children.style.display='none'; tog.textContent='▸'; }
-      row.addEventListener('click', async ()=>{
+    row.addEventListener('click', async ()=>{
         document.querySelectorAll('.tree .node.active').forEach(n=>n.classList.remove('active'));
         row.classList.add('active');
-        selected = { name, path, is_dir: isDir }; selectedPath = path; $('#path').value = path; const idx = path.lastIndexOf('/'); cwd = isDir ? path : (idx>0 ? path.substring(0, idx) : '/');
-        if(isDir){ await expand(); ls(); } else { openFile(path); }
+  selected = { name, path, is_dir: isDir }; selectedPath = path; const idx = path.lastIndexOf('/'); const next = isDir ? path : (idx>0 ? path.substring(0, idx) : '/');
+  if(isDir){ await expand(); navigateTo(next); } else { openFile(path); }
       });
       tog.addEventListener('click', async (ev)=>{ ev.stopPropagation(); if(expanded) collapse(); else await expand(); });
       // expose helpers
       return { el, expand, collapse };
     }
     async function mkdir(){
-      const name=prompt('Folder name','New Folder'); if(!name) return;
+      const name=await promptModal('Folder name','New Folder'); if(!name) return;
       const fd=new FormData(); fd.set('path',cwd); fd.set('name',name);
       await fetch('../api/fs/mkdir',{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrf()}}); ls();
     }
     async function newFile(){
-      const name=prompt('File name','untitled.txt'); if(!name) return;
+      const name=await promptModal('File name','untitled.txt'); if(!name) return;
       const path=(cwd.endsWith('/')?cwd:cwd+'/')+name;
       const fd=new FormData(); fd.set('path',path); fd.set('content','');
       await fetch('../api/fs/write',{method:'POST',body:fd,headers:{'X-CSRFToken':getCsrf()}}); ls();
@@ -215,28 +337,123 @@ body.app{height:100vh;display:flex;flex-direction:column}
       try{ window.parent.postMessage({type:'webos:launch', app:{slug:'gallery', kind:'builtin', path:`apps/gallery`}, params:{path:path}, focus:true}, '*'); }catch(e){ console.error(e); }
     }
     function getCsrf(){ const name='csrftoken='; const c=document.cookie.split(';').find(c=>c.trim().startsWith(name)); return c?decodeURIComponent(c.split('=')[1]):''; }
-    async function upload(){ const inp=$('#upload-input'); inp.onchange=async()=>{ if(!inp.files.length) return; const f=inp.files[0]; const fd=new FormData(); fd.set('path', cwd); fd.set('file', f); await fetch('../api/fs/upload',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); inp.value=''; ls(); }; inp.click(); }
-    async function download(){ if(!selected) return; window.location.href = `../api/fs/download?path=${encodeURIComponent(selected.path)}`; }
-    async function doRename(){ if(!selected) return; const newName = prompt('New name', selected.name); if(!newName) return; const fd=new FormData(); fd.set('path', selected.path); fd.set('name', newName); await fetch('../api/fs/rename',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); ls(); }
-    function cut(){ if(!selected) return; clipboard={op:'move', src:selected.path}; }
-    function copy(){ if(!selected) return; clipboard={op:'copy', src:selected.path}; }
-    async function paste(){ if(!clipboard) return; const target = cwd.endsWith('/')? cwd : (cwd+'/'); const fd=new FormData(); fd.set('src', clipboard.src); fd.set('dst', target); const url = clipboard.op==='move'? '../api/fs/move' : '../api/fs/copy'; await fetch(url,{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); if(clipboard.op==='move') clipboard=null; ls(); }
-    async function remove(){ if(!selected) return; const ok=confirm('Delete?'); if(!ok) return; const fd=new FormData(); fd.set('path', selected.path); await fetch('../api/fs/delete',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); ls(); }
-    $('#mk').onclick=mkdir; $('#newfile').onclick=newFile; $('#upload').onclick=upload; $('#up').onclick=()=>{ if(cwd!='/'){ cwd=cwd.replace(/\/?[^\/]+\/?$/,'/')||'/'; $('#path').value=cwd; ls(); } };
-    $('#btn-download').onclick=download; $('#btn-rename').onclick=doRename; $('#btn-cut').onclick=cut; $('#btn-copy').onclick=copy; $('#btn-paste').onclick=paste; $('#btn-delete').onclick=remove;
-    $('#ctx').addEventListener('click', (e)=>{ const act=e.target?.dataset?.act; if(!act) return; hideCtx(); if(act==='download') download(); else if(act==='rename') doRename(); else if(act==='cut') cut(); else if(act==='copy') copy(); else if(act==='paste') paste(); else if(act==='delete') remove(); });
-    $('#path').addEventListener('change',()=>{ cwd=$('#path').value||'/'; ls(); });
+    async function upload(){ const inp=$('#upload-input'); inp.onchange=async()=>{ const files = Array.from(inp.files||[]); if(!files.length) return; for(const f of files){ const fd=new FormData(); fd.set('path', cwd); fd.set('file', f); await fetch('../api/fs/upload',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); } inp.value=''; ls(); }; inp.click(); }
+    async function uploadFolder(){ const inp=$('#upload-folder-input'); inp.onchange=async()=>{ const files = Array.from(inp.files||[]); if(!files.length) return; for(const f of files){ const rel = f.webkitRelativePath || f.name; const relDir = rel.split('/').slice(0,-1).join('/'); await ensureDirs(cwd, relDir); const targetDir = relDir? (cwd.replace(/\/?$/, '/') + relDir) : cwd; const fd=new FormData(); fd.set('path', targetDir); fd.set('file', f); await fetch('../api/fs/upload',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); } inp.value=''; ls(); }; inp.click(); }
+    async function download(){
+      const paths = selection.size? Array.from(selection) : (selected? [selected.path] : []);
+      if(!paths.length) return;
+      // If single path, keep existing single download for better naming
+      if(paths.length===1){ window.location.href = `../api/fs/download?path=${encodeURIComponent(paths[0])}`; return; }
+      // Multi -> request a single zip
+      const r = await fetch('../api/fs/download-multi', { method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()}, body: JSON.stringify({paths}) });
+      if(!r.ok){ alert('Download failed'); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='download.zip'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1500);
+    }
+    async function moveOne(src, dstDir){ const target = dstDir.endsWith('/')? dstDir : (dstDir+'/'); const fd=new FormData(); fd.set('src', src); fd.set('dst', target); await fetch('../api/fs/move',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); }
+    async function copyOne(src, dstDir){ const target = dstDir.endsWith('/')? dstDir : (dstDir+'/'); const fd=new FormData(); fd.set('src', src); fd.set('dst', target); await fetch('../api/fs/copy',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); }
+  async function doRename(){ if(!selected) return; const newName = await promptModal('Rename to', selected.name||''); if(!newName) return; const fd=new FormData(); fd.set('path', selected.path); fd.set('name', newName); await fetch('../api/fs/rename',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); ls(); }
+    function cut(){ const paths = selection.size? Array.from(selection) : (selected? [selected.path]:[]); if(!paths.length) return; clipboard = { op:'move', items: paths }; }
+    function copy(){ const paths = selection.size? Array.from(selection) : (selected? [selected.path]:[]); if(!paths.length) return; clipboard = { op:'copy', items: paths }; }
+    async function paste(){
+      if(clipboard && clipboard.items){ const dst = cwd.endsWith('/')? cwd : (cwd+'/'); for(const it of clipboard.items){ const fn = clipboard.op==='move'? moveOne : copyOne; await fn(it, dst); } if(clipboard.op==='move') clipboard=null; ls(); return; }
+      if(!clipboard) return; const target = cwd.endsWith('/')? cwd : (cwd+'/'); const fd=new FormData(); fd.set('src', clipboard.src); fd.set('dst', target); const url = clipboard.op==='move'? '../api/fs/move' : '../api/fs/copy'; await fetch(url,{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); if(clipboard.op==='move') clipboard=null; ls();
+    }
+  async function remove(){ const paths = selection.size? Array.from(selection) : (selected? [selected.path]:[]); if(!paths.length) return; const ok=confirm('Delete selected?'); if(!ok) return; for(const p of paths){ const fd=new FormData(); fd.set('path', p); await fetch('../api/fs/delete',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); } clearSelection(); ls(); }
+  $('#mk').onclick=mkdir; $('#newfile').onclick=newFile; 
+  // Unified upload dropdown
+  const upBtn=$('#btn-upload'); const upMenu=$('#upload-menu');
+  upBtn.onclick=(e)=>{ e.stopPropagation(); upMenu.style.display = (upMenu.style.display==='block'?'none':'block'); };
+  document.addEventListener('click', (e)=>{ if(upMenu && !upBtn.contains(e.target)) upMenu.style.display='none'; });
+  $('#upload-files-opt').onclick=()=>{ upMenu.style.display='none'; upload(); };
+  $('#upload-folder-opt').onclick=()=>{ upMenu.style.display='none'; uploadFolder(); };
+  $('#btn-back').onclick=navigateBack; $('#btn-forward').onclick=navigateForward; updateNavButtons();
+  $('#btn-download').onclick=download; $('#btn-rename').onclick=doRename; $('#btn-cut').onclick=cut; $('#btn-copy').onclick=copy; $('#btn-paste').onclick=paste; $('#btn-delete').onclick=remove; $('#btn-sort').onclick=()=>{ sortDir*=-1; ls(); }; $('#btn-view').onclick=()=>{ viewMode = (viewMode==='tiles'?'list':'tiles'); document.body.classList.toggle('view-list', viewMode==='list'); };
+  $('#ctx').addEventListener('click', (e)=>{ const act=e.target?.dataset?.act; if(!act) return; hideCtx(); if(act==='download') download(); else if(act==='rename') doRename(); else if(act==='cut') cut(); else if(act==='copy') copy(); else if(act==='paste') paste(); else if(act==='delete') remove(); });
+  $('#search').addEventListener('input', ()=>{ searchQuery = ($('#search').value||'').trim(); ls(); });
   // Initial load
   buildTree();
   ls();
+  // Breadcrumb
+  function renderBreadcrumb(){ const bc=$('#breadcrumb'); if(!bc) return; bc.innerHTML=''; bc.classList.remove('anim'); const parts=cwd.split('/').filter(Boolean); const segs=['/'].concat(parts); let cur=''; segs.forEach((seg,idx)=>{ const isRoot=(idx===0); if(isRoot){ cur='/'; } else { cur=(cur.endsWith('/')?cur:(cur+'/'))+seg; } const el=document.createElement('span'); el.className='crumb'; el.textContent=isRoot?(window.USERNAME? `${window.USERNAME}'s Workspace`:'This PC'):seg; el.title=cur; el.addEventListener('click', ()=>{ navigateTo(isRoot?'/':cur); }); bc.appendChild(el); if(idx<segs.length-1){ const sep=document.createElement('span'); sep.className='crumb sep'; sep.textContent='›'; bc.appendChild(sep); } }); requestAnimationFrame(()=> bc.classList.add('anim')); }
+  // Bar layout: collapse when space is tight
+  function layoutTopBar(){}
+  // Search overlay toggle
+  (function(){
+    const bcWrap = document.getElementById('bc-wrap'); const btn = document.getElementById('btn-search'); const input = document.getElementById('search');
+    btn?.addEventListener('click', (e)=>{ e.stopPropagation(); bcWrap.classList.add('search-open'); setTimeout(()=>{ try{ input.focus(); }catch{} }, 10); });
+    document.addEventListener('click', (e)=>{ if(!bcWrap.contains(e.target) && !btn.contains(e.target)){ bcWrap.classList.remove('search-open'); } });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ bcWrap.classList.remove('search-open'); } });
+  })();
+    // Keyboard shortcuts
+    document.addEventListener('keydown', async (ev)=>{
+      const hasSel = selection.size>0 || !!selected;
+      const firstSel = selection.size? Array.from(selection)[0] : (selected? selected.path : null);
+      // Ctrl/Cmd+A select all
+      if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='a'){ ev.preventDefault(); document.querySelectorAll('#grid .item').forEach(el=>{ el.classList.add('selected'); const p=el.dataset.path; if(p) selection.add(p); }); return; }
+      // Copy/Cut/Paste
+      if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='c'){ ev.preventDefault(); copy(); return; }
+      if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='x'){ ev.preventDefault(); cut(); return; }
+      if((ev.ctrlKey||ev.metaKey) && ev.key.toLowerCase()==='v'){ ev.preventDefault(); paste(); return; }
+      // Enter -> open (dir navigate or file open)
+  if(ev.key==='Enter' && hasSel){ ev.preventDefault(); const card = firstSel && document.querySelector(`.item[data-path="${CSS.escape(firstSel)}"]`); if(card){ const isDir = card.dataset.dir==='1'; if(isDir){ navigateTo(card.dataset.path); } else { const name = card.dataset.name||''; if(/\.(png|jpg|jpeg|gif|webp|bmp)$/i.test(name)) openImage(card.dataset.path); else if(/\.wbdz$/i.test(name)) { try{ window.parent.postMessage({type:'webos:launch', app:{slug:'whiteboard', kind:'builtin', path:`apps/whiteboard`}, params:{path:card.dataset.path}, focus:true}, '*'); }catch(e){ openFile(card.dataset.path); } } else if(/\.(txt|md)$/i.test(name)) openFile(card.dataset.path); else showUnsupported(card.dataset.path); } } return; }
+      // Delete/Backspace -> delete
+      if((ev.key==='Delete' || ev.key==='Backspace') && hasSel){ ev.preventDefault(); remove(); return; }
+      // F2 -> rename
+      if(ev.key==='F2' && hasSel){ ev.preventDefault(); doRename(); return; }
+      // Alt+Up -> go up
+  if(ev.altKey && ev.key.toLowerCase()==='arrowup'){ ev.preventDefault(); if(cwd!=='/'){ const up = cwd.replace(/\/?[^\/]+\/?$/,'/')||'/'; navigateTo(up); } return; }
+    });
+  // prompt modal implementation
+  function promptModal(title, def){ return new Promise((resolve)=>{ const m=$('#modal-prompt'); $('#prompt-title').textContent=title||'Enter value'; const inp=$('#prompt-input'); inp.value=def||''; m.style.display='flex'; setTimeout(()=>{ try{inp.focus(); inp.select();}catch{} },10); const ok=$('#prompt-ok'); const cancel=$('#prompt-cancel'); const onOk=()=>{ cleanup(); resolve(inp.value.trim()||null); }; const onCancel=()=>{ cleanup(); resolve(null); }; const onKey=(ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); onOk(); } }; const onEsc=(ev)=>{ if(ev.key==='Escape'){ ev.preventDefault(); onCancel(); } }; function cleanup(){ m.style.display='none'; ok.removeEventListener('click', onOk); cancel.removeEventListener('click', onCancel); inp.removeEventListener('keydown', onKey); document.removeEventListener('keydown', onEsc); }
+    ok.addEventListener('click', onOk); cancel.addEventListener('click', onCancel); inp.addEventListener('keydown', onKey); document.addEventListener('keydown', onEsc); }); }
+  // re-render breadcrumb on list updates
+  const __ls = ls; ls = async function(){ await __ls(); renderBreadcrumb(); };
+  // Recalculate bar after initial render and on each navigation/list
+  const __ls2 = ls; ls = async function(){ await __ls2(); layoutTopBar(); };
+    // Drag & drop from desktop into grid to upload files/folders
+    const grid = document.getElementById('grid');
+    grid.addEventListener('dragover', (ev)=>{ ev.preventDefault(); });
+    grid.addEventListener('drop', async (ev)=>{
+      ev.preventDefault();
+      const items = ev.dataTransfer?.items; const files = ev.dataTransfer?.files;
+      if(items && items[0] && items[0].webkitGetAsEntry){
+        const traverse = async (entry, basePath) =>{
+          if(entry.isFile){ await new Promise(res=> entry.file(async (file)=>{ const relDir = basePath; await ensureDirs(cwd, relDir); const fd=new FormData(); fd.set('path', relDir? (cwd.replace(/\/?$/, '/') + relDir) : cwd); fd.set('file', file); await fetch('../api/fs/upload',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); res(); })); }
+          else if(entry.isDirectory){ const reader = entry.createReader(); await new Promise((resolve)=>{ const readBatch = ()=> reader.readEntries(async (entries)=>{ if(!entries.length) return resolve(); for(const ent of entries){ await traverse(ent, basePath? (basePath + '/' + entry.name) : entry.name); } readBatch(); }); readBatch(); }); }
+        };
+        for(const it of items){ const entry = it.webkitGetAsEntry && it.webkitGetAsEntry(); if(entry){ await traverse(entry, ''); } }
+        ls();
+      } else if(files && files.length){ for(const f of files){ const fd=new FormData(); fd.set('path', cwd); fd.set('file', f); await fetch('../api/fs/upload',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); } ls(); }
+    });
+    async function ensureDirs(base, relDir){ if(!relDir) return; const parts = relDir.split('/').filter(Boolean); let cur = base.endsWith('/')? base : (base+'/'); for(const seg of parts){ const fd=new FormData(); fd.set('path', cur); fd.set('name', seg); await fetch('../api/fs/mkdir',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); cur = cur + seg + '/'; } }
 
     // Ribbon overflow -> More menu
     const rb=document.querySelector('.ribbon'); const rbMore=document.getElementById('rb-more'); const rbMenu=document.getElementById('rb-menu');
     function layoutRibbon(){ if(!rb || !rbMore || !rbMenu) return; rbMenu.innerHTML='';
-      const actions=[...rb.querySelectorAll('.btn')].filter(b=>b.id && b.id!=='rb-more'); actions.forEach(b=>{ b.style.display=''; }); rbMore.style.display='none';
-      const avail = rb.clientWidth - rbMore.offsetWidth - 16; let used=0; const hidden=[];
-      actions.forEach(b=>{ const w = b.offsetWidth + 12; if(used + w > avail){ hidden.push(b); } else { used += w; } });
-      if(hidden.length){ rbMore.style.display='inline-flex'; rbMenu.innerHTML=''; hidden.forEach(b=>{ b.style.display='none'; const item=document.createElement('button'); item.className='menu-btn'; item.textContent = b.textContent || b.id; item.addEventListener('click', ()=>{ b.click(); rbMenu.style.display='none'; }); rbMenu.appendChild(item); }); }
+      const actions=[...rb.querySelectorAll('.btn')].filter(b=>b.id && !['rb-more'].includes(b.id));
+      actions.forEach(b=>{ b.style.display=''; }); rbMore.style.display='none';
+      // Reserve space for More and add a small safety margin so it never overflows
+      const reserve = Math.max(rbMore.offsetWidth, 80) + 24; // button width + margin
+      const avail = rb.clientWidth - reserve;
+      let used=0; const hidden=[];
+      actions.forEach(b=>{ const w = Math.max(b.offsetWidth, 80) + 12; if(used + w > avail){ hidden.push(b); } else { used += w; } });
+      if(hidden.length){
+        rbMore.style.display='inline-flex'; rbMenu.innerHTML='';
+        hidden.forEach(b=>{
+          b.style.display='none';
+          const item=document.createElement('button'); item.className='menu-btn';
+          // Clone icon span if present
+          const iconSpan = b.querySelector('span.iconify');
+          if(iconSpan){ item.appendChild(iconSpan.cloneNode(true)); }
+          // Label span
+          const labelSpan = Array.from(b.querySelectorAll('span')).find(s=>!s.classList.contains('iconify'));
+          const lbl = document.createElement('span'); lbl.textContent = (labelSpan && labelSpan.textContent) || (b.textContent||b.id).trim();
+          item.appendChild(lbl);
+          item.addEventListener('click', ()=>{ b.click(); rbMenu.style.display='none'; });
+          rbMenu.appendChild(item);
+        });
+      }
     }
     window.addEventListener('resize', layoutRibbon);
     setTimeout(layoutRibbon, 50);
@@ -250,12 +467,14 @@ body.app{height:100vh;display:flex;flex-direction:column}
         document.body.classList.toggle('pane-collapsed');
       } else if(msg.type==='webos:navigate' && msg.action==='back'){
         // navigate up
-        if(cwd!=='/'){ cwd=cwd.replace(/\/?[^\/]+\/?$/,'/')||'/'; $('#path').value=cwd; ls(); }
+        if(cwd!=='/'){ cwd=cwd.replace(/\/?[^\/]+\/?$/,'/')||'/'; ls(); }
       } else if(msg.type==='webos:state' && msg.state && msg.state.user){
         window.USERNAME = msg.state.user.username;
         const rootLabel = document.querySelector('#tree-root > li > .node .label');
         if(rootLabel){ rootLabel.textContent = `${window.USERNAME}'s Workspace`; }
       }
     });
+    // Unsupported modal helpers
+    function showUnsupported(path){ const m=$('#modal-unsupported'); m.style.display='flex'; $('#unsup-download').onclick=()=>{ window.open(`../api/fs/download?path=${encodeURIComponent(path)}`, '_blank'); }; $('#unsup-close').onclick=()=>{ m.style.display='none'; }; }
   </script>
 </body></html>
