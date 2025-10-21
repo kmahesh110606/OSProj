@@ -53,3 +53,7 @@ Cookies for third-party PWAs are subject to cross-site restrictions; recommend u
 ## Notes
 - Development server only; use a proper WSGI/ASGI server in production.
 - Consider CSP and X-Frame-Options if embedding external sites; by default, Django's middleware may block iframes. You may need to adjust security settings for specific trusted domains.
+
+
+
+# IN PROGRESS
