@@ -34,7 +34,7 @@ DEBUG = os.getenv('DEBUG', '1') == '1'
 
 # Comma-separated hostnames, e.g. "yourapp.azurewebsites.net,example.com"
 _hosts = os.getenv('ALLOWED_HOSTS', '').strip()
-ALLOWED_HOSTS = ['workspaceos.azurewebsites.net', '169.254.129.4']
+ALLOWED_HOSTS = ['workspaceos.azurewebsites.net', '169.254.129.4', "127.0.0.1"]
 
 # For CSRF on Azure App Service: add your full https origins
 if ALLOWED_HOSTS:
@@ -159,6 +159,29 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Allow same-origin pages to be displayed in iframes (required for built-in app windows)
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
-# Email settings (development)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@example.com'
+# Email settings: default to console in DEBUG; enable SMTP via environment in production
+# Common Azure setup (e.g., SendGrid):
+#   EMAIL_HOST=smtp.sendgrid.net
+#   EMAIL_PORT=587
+#   EMAIL_HOST_USER=apikey
+#   EMAIL_HOST_PASSWORD=<your_sendgrid_api_key>
+#   EMAIL_USE_TLS=1
+#   DEFAULT_FROM_EMAIL=Your App <noreply@yourdomain>
+
+_env_email_backend = os.getenv('EMAIL_BACKEND')
+if _env_email_backend:
+    EMAIL_BACKEND = _env_email_backend
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend'
+
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', '1') == '1'
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', '0') == '1'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@example.com')
+
+# If no SMTP host is configured and not explicitly set to console, keep console backend to avoid errors
+if not DEBUG and not EMAIL_HOST and EMAIL_BACKEND.endswith('.smtp.EmailBackend'):
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

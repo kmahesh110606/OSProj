@@ -9,6 +9,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .tokens import generate_token
 from django.contrib.auth.hashers import make_password
+import secrets
+import string
 
 def home(request):
     # Redirect authenticated users to the Web OS desktop
@@ -35,22 +37,14 @@ def signup(request):
         if password != confirm_password:
             messages.error(request, "Passwords do not match")
             return redirect('signup')
+        # Create active account immediately (no email verification for now)
         user = CustomUser.objects.create_user(email=email, phone=phone, username=username, password=password)
-        # Require email verification before activation
-        user.is_active = False
+        user.is_active = True
         user.save(update_fields=['is_active'])
-        # Send activation email (console backend in dev)
-        try:
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            token = generate_token.make_token(user)
-            activate_link = f"http://{request.get_host()}/activate/{uid}/{token}/"
-            subject = "Activate your account"
-            body = f"Hello {user.username},\n\nPlease confirm your email to activate your account:\n{activate_link}\n\n"
-            send_mail(subject, body, getattr(settings,'DEFAULT_FROM_EMAIL','noreply@example.com'), [user.email], fail_silently=True)
-        except Exception:
-            pass
-        messages.success(request, "Account created. Please check your email to activate your account.")
-        return redirect('signin')
+        # Auto-login for a smoother first-run experience
+        login(request, user)
+        messages.success(request, "Account created. You're signed in.")
+        return redirect('webos-desktop')
     return render(request, "authentication/signup.html")
 
 def signin(request):
@@ -59,9 +53,6 @@ def signin(request):
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            if not user.is_active:
-                messages.error(request, "Please verify your email to activate your account.")
-                return redirect('signin')
             login(request, user)
             return redirect('home')
         else:
@@ -89,25 +80,10 @@ def activate(request, uidb64, token):
     return redirect('signup')
 
 def forgot_password(request):
+    # Temporarily disabled: future flow will verify via phone number
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
-        try:
-            user = CustomUser.objects.get(email=email)
-        except CustomUser.DoesNotExist:
-            # Don't reveal whether email exists
-            messages.success(request, "If an account exists for that email, we've sent a reset link.")
-            return redirect('forgot')
-        try:
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            token = generate_token.make_token(user)
-            link = f"http://{request.get_host()}/reset/{uid}/{token}/"
-            subject = "Reset your password"
-            body = f"Hello {user.username},\n\nReset your password using the link below:\n{link}\n\nIf you didn't request this, ignore this email."
-            send_mail(subject, body, getattr(settings,'DEFAULT_FROM_EMAIL','noreply@example.com'), [user.email], fail_silently=True)
-        except Exception:
-            pass
-        messages.success(request, "If an account exists for that email, we've sent a reset link.")
-        return redirect('forgot')
+        messages.info(request, "Password reset via phone verification is coming soon.")
+        return render(request, 'authentication/forgot.html')
     return render(request, 'authentication/forgot.html')
 
 def reset_password(request, uidb64, token):
