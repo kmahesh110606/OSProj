@@ -33,13 +33,13 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-l+bf$anh+46r%uy$z+q$e6rh-x
 DEBUG = os.getenv('DEBUG', '1') == '1'
 
 # Comma-separated hostnames, e.g. "yourapp.azurewebsites.net,example.com"
-_hosts = os.getenv('ALLOWED_HOSTS', '').strip()
+_hosts = os.getenv('ALLOWED_HOSTS', 'workspaceos.azurewebsites.net', '169.254.129.4').strip()
 ALLOWED_HOSTS = [h.strip() for h in _hosts.split(',') if h.strip()] if _hosts else []
 
 # For CSRF on Azure App Service: add your full https origins
 if ALLOWED_HOSTS:
     CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
-
+print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
 
 # Application definition
 
