@@ -40,7 +40,38 @@
 
   // Page-load enter animations for app content
   try{
+    // Splash overlay per app
+    const showSplash = ()=>{
+      try{
+        const path = (location.pathname||'').split('/').filter(Boolean);
+        // Expect /os/apps/<slug> or /os/apps/html/<slug>
+        let slug = path[path.length-1] || '';
+        if(path[path.length-2] === 'html') slug = path[path.length-1];
+        const MAP = {
+          'store': {name:'Store', icon:'/static/assets/icons/store.svg'},
+          'explorer': {name:'File Explorer', icon:'/static/assets/icons/explorer.svg'},
+          'notepad': {name:'Notepad', icon:'/static/assets/icons/notepad.svg'},
+          'gallery': {name:'Gallery', icon:'/static/assets/icons/gallery.svg'},
+          'sharedrop': {name:'ShareDrop', icon:'/static/assets/icons/sharedrop.svg'},
+          'settings': {name:'Settings', icon:'/static/assets/icons/settings.svg'},
+          'stopwatch': {name:'Stopwatch', icon:'/static/assets/icons/stopwatch.svg'},
+          'whiteboard': {name:'Whiteboard', icon:'/static/assets/icons/whiteboard.svg'},
+          'chat': {name:'Chat', icon:'/static/assets/icons/chat.svg'},
+          'rooms': {name:'Rooms', icon:'/static/assets/icons/rooms.svg'},
+          'calculator': {name:'Calculator', icon:'/static/assets/icons/calculator.svg'},
+          'texteditor': {name:'Text Editor', icon:'/static/assets/icons/default-app.svg'},
+          'editor': {name:'Editor', icon:'/static/assets/icons/default-app.svg'}
+        };
+        const meta = MAP[slug] || {name: (slug||'App').replace(/\b\w/g,c=>c.toUpperCase()), icon:'/static/assets/icons/default-app.svg'};
+        const sp = document.createElement('div'); sp.className='app-splash';
+        sp.innerHTML = `<div class="splash-inner"><div class="splash-icon"><img alt="${meta.name}" src="${meta.icon}"></div><div class="splash-name">${meta.name}</div></div>`;
+        document.body.appendChild(sp);
+        setTimeout(()=>{ try{ sp.classList.add('hide'); }catch{} }, 650);
+        setTimeout(()=>{ try{ sp.remove(); }catch{} }, 1100);
+      }catch{}
+    };
     const runEnter = ()=>{
+      showSplash();
       document.body.classList.add('app-animate-enter');
       // Stagger visible cards slightly
       const cards = Array.from(document.querySelectorAll('.app-card'));

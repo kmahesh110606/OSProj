@@ -48,6 +48,19 @@
   let saveTimer = null;
   let autosaveTimer = null;
   let lastSyncOk = null; // null unknown, true ok, false error
+  // Track dock bottom gap for safe maximize height
+  let dockBottomGapPx = 76; // default fallback (approx bottom 12 + height ~64)
+
+  function recalcDockGap(){
+    try{
+      if(!taskbarEl) return;
+      const st = getComputedStyle(taskbarEl);
+      const bottom = parseInt(st.bottom || '12') || 12;
+      const h = taskbarEl.offsetHeight || 64;
+      dockBottomGapPx = bottom + h;
+      document.body.style.setProperty('--dock-bottom-gap', dockBottomGapPx + 'px');
+    }catch{}
+  }
 
   function tick(){
     const d = new Date();
@@ -66,6 +79,9 @@
   window.addEventListener('resize', updateResponsive);
   window.addEventListener('orientationchange', updateResponsive);
   updateResponsive();
+  // Initialize dock gap and keep in sync on resize as well
+  recalcDockGap();
+  window.addEventListener('resize', recalcDockGap);
 
   // Mobile now shows both Pinned and All apps in a single scroll; no tab toggles needed
 
@@ -398,6 +414,17 @@
         if(dir.includes('s')) newH = Math.max(minH, startH+dy);
         if(dir.includes('w')) { newW = Math.max(minW, startW-dx); newL = startLeft + (startW - newW); }
         if(dir.includes('n')) { newH = Math.max(minH, startH-dy); newT = startTop + (startH - newH); }
+        // Prevent window bottom from going behind a fixed dock on desktop
+        try{
+          const dockCfg = (state.appearance && state.appearance.dock) || {};
+          const behavior = String(dockCfg.behavior||'fixed');
+          if(!document.body.classList.contains('is-mobile') && behavior==='fixed'){
+            recalcDockGap();
+            const maxBottom = window.innerHeight - (window.getComputedStyle(taskbarEl).display==='none'?0:dockBottomGapPx);
+            const bottom = newT + newH;
+            if(bottom > maxBottom){ newH = Math.max(minH, maxBottom - newT); }
+          }
+        }catch{}
         win.style.width = newW+'px';
         win.style.height = newH+'px';
         win.style.left = newL+'px';
@@ -422,6 +449,17 @@
         if(dir.includes('s')) newH = Math.max(minH, startH+dy);
         if(dir.includes('w')) { newW = Math.max(minW, startW-dx); newL = startLeft + (startW - newW); }
         if(dir.includes('n')) { newH = Math.max(minH, startH-dy); newT = startTop + (startH - newH); }
+        // Prevent window bottom from going behind a fixed dock on desktop
+        try{
+          const dockCfg = (state.appearance && state.appearance.dock) || {};
+          const behavior = String(dockCfg.behavior||'fixed');
+          if(!document.body.classList.contains('is-mobile') && behavior==='fixed'){
+            recalcDockGap();
+            const maxBottom = window.innerHeight - (window.getComputedStyle(taskbarEl).display==='none'?0:dockBottomGapPx);
+            const bottom = newT + newH;
+            if(bottom > maxBottom){ newH = Math.max(minH, maxBottom - newT); }
+          }
+        }catch{}
         win.style.width = newW+'px';
         win.style.height = newH+'px';
         win.style.left = newL+'px';
@@ -515,7 +553,16 @@
     btnMaxEl.onclick = ()=>{
       if(!maximized){
         prevRect.left = node.style.left; prevRect.top = node.style.top; prevRect.width = node.style.width; prevRect.height = node.style.height;
-        node.style.left='0px'; node.style.top='0px'; node.style.width='100%'; node.style.height='calc(100% - 40px)';
+        // Use dock behavior: fixed -> keep above dock; autohide/mobile -> full height
+        const dockCfg = (state.appearance && state.appearance.dock) || {};
+        const behavior = String(dockCfg.behavior||'fixed');
+        recalcDockGap();
+        node.style.left='0px'; node.style.top='0px'; node.style.width='100%';
+        if(!document.body.classList.contains('is-mobile') && behavior === 'fixed'){
+          node.style.height='calc(100% - var(--dock-bottom-gap, 76px))';
+        } else {
+          node.style.height='100%';
+        }
       } else {
         node.style.left = prevRect.left; node.style.top = prevRect.top; node.style.width = prevRect.width; node.style.height = prevRect.height;
       }
@@ -996,6 +1043,18 @@
     const msg = ev.data || {};
     if(msg.type === 'webos:appsChanged'){
       refreshAllAppsFromServer();
+    } else if(msg.type === 'webos:canGoBack'){
+      // Find which window/iframe sent this, and update its back capability
+      try{
+        const frames = Array.from(document.querySelectorAll('.window iframe.app-frame'));
+        const mat = frames.find(f=> f.contentWindow === ev.source);
+        if(mat){
+          const win = mat.closest('.window');
+          if(win && typeof win.__updateBackCapFromApp === 'function'){
+            win.__updateBackCapFromApp(!!msg.value);
+          }
+        }
+      }catch{}
     }
   });
   
@@ -1023,6 +1082,26 @@
     document.body.classList.toggle('blur-on', blur);
     // Theme toggle on body for iframe overrides
     document.body.classList.toggle('theme-light', ap.theme === 'light');
+    // Dock style/behavior (desktop only)
+    try{
+      if(!document.body.classList.contains('is-mobile')){
+        const dock = ap.dock || {};
+        const style = String(dock.style||'floating');
+        const behavior = String(dock.behavior||'fixed');
+        document.body.classList.toggle('dock-style-bar', style === 'bar');
+        document.body.classList.toggle('dock-autohide', behavior === 'autohide');
+        if(behavior === 'autohide'){
+          document.body.classList.add('dock-show');
+          setTimeout(()=>{ document.body.classList.remove('dock-show'); }, 1400);
+        } else {
+          document.body.classList.remove('dock-show');
+        }
+        // Update dock gap for fixed behavior
+        recalcDockGap();
+      } else {
+        document.body.classList.remove('dock-style-bar','dock-autohide','dock-show');
+      }
+    }catch{}
     // Wallpaper on desktop element
     if(ap.wallpaper){
       // Route wallpaper through proxy if it's an external URL
@@ -1108,31 +1187,91 @@
   }
 
   // Search: scan built-in apps, server-listed apps in All apps, and file paths (if cached in state)
-  function performSearch(q){ q=(q||'').trim().toLowerCase(); if(!q){ searchResults.innerHTML=''; return; }
+  function performSearch(q){
+    q=(q||'').trim().toLowerCase();
+    if(!q){ searchResults.innerHTML=''; return; }
     const results=[];
     // Built-in apps
-    Object.entries(WEBOS_APPS||{}).forEach(([slug,info])=>{ const title=String(info.title||slug); if(title.toLowerCase().includes(q)) results.push({type:'app', title, slug, icon:info.icon, app: {slug, kind:info.kind, path:info.path, url: null, icon: info.icon}}); });
+    Object.entries(WEBOS_APPS||{}).forEach(([slug,info])=>{
+      const title=String(info.title||slug);
+      if(title.toLowerCase().includes(q)) results.push({type:'app', title, slug, icon:info.icon, app: {slug, kind:info.kind, path:info.path, url: null, icon: info.icon}});
+    });
     // Server apps already rendered in All apps
-    document.querySelectorAll('#allapps-container .start-app').forEach(btn=>{ const name = btn.querySelector('.app-title')?.textContent?.trim()||''; const slug = btn.dataset.slug; if(name.toLowerCase().includes(q) && !results.find(r=>r.slug===slug)){
-      const kind = btn.dataset.kind; const url = btn.dataset.url; const icon = btn.dataset.icon || btn.querySelector('.app-icon')?.textContent || '🗔'; results.push({type:'app', title:name, slug, icon, app:{slug, kind, url, proxy: (kind==='pwa') ? true : (btn.dataset.proxy==='1'), icon}});
-    }});
+    document.querySelectorAll('#allapps-container .start-app').forEach(btn=>{
+      const name = btn.querySelector('.app-title')?.textContent?.trim()||'';
+      const slug = btn.dataset.slug;
+      if(name.toLowerCase().includes(q) && !results.find(r=>r.slug===slug)){
+        const kind = btn.dataset.kind; const url = btn.dataset.url; const icon = btn.dataset.icon || btn.querySelector('.app-icon')?.textContent || '🗔';
+        results.push({type:'app', title:name, slug, icon, app:{slug, kind, url, proxy: (kind==='pwa') ? true : (btn.dataset.proxy==='1'), icon}});
+      }
+    });
     // Files/folders from last listing (if available in window state.cache)
     try{
       const cache = state.fs_cache || [];
-      cache.forEach(e=>{ const nm=String(e.name||''); if(nm.toLowerCase().includes(q)) results.push({type:e.is_dir?'folder':'file', title:nm, path:e.path}); });
+      cache.forEach(e=>{
+        const nm=String(e.name||'');
+        if(nm.toLowerCase().includes(q)) results.push({type:e.is_dir?'folder':'file', title:nm, path:e.path});
+      });
     }catch{}
-    renderSearchResults(results.slice(0, 50));
+    // Settings sections
+    const SETTINGS = [
+      {sec:'accounts', label:'Settings • Accounts'},
+      {sec:'installed', label:'Settings • Installed apps'},
+      {sec:'themes', label:'Settings • Themes & Personalisation'},
+      {sec:'privacy', label:'Settings • Privacy'},
+      {sec:'storage', label:'Settings • Storage'},
+      {sec:'feedback', label:'Settings • Feedback & Requests'},
+      {sec:'danger', label:'Settings • Delete account'}
+    ];
+    SETTINGS.forEach(s=>{ if(s.label.toLowerCase().includes(q) || ('settings '+s.sec).includes(q)) results.push({type:'settings', title:s.label, section:s.sec}); });
+    // Chat users (if present in state)
+    try{
+      const users = (state.chat_users || state.chat?.users || []);
+      users.forEach(u=>{
+        const nm = String(u.name || u.username || '').trim();
+        const un = String(u.username || '').trim();
+        if(!nm && !un) return;
+        if(nm.toLowerCase().includes(q) || un.toLowerCase().includes(q)){
+          results.push({type:'chat', title: nm || un, username: un || nm, avatar: u.avatar||''});
+        }
+      });
+    }catch{}
+
+    renderSearchResults(results.slice(0, 60));
   }
-  function renderSearchResults(list){ if(!searchResults) return; searchResults.innerHTML=''; if(!list.length){ searchResults.innerHTML='<div class="muted" style="padding:6px 4px">No results</div>'; return; }
+  function renderSearchResults(list){
+    if(!searchResults) return;
+    searchResults.innerHTML='';
+    if(!list.length){ searchResults.innerHTML='<div class="muted" style="padding:8px 6px">No results</div>'; return; }
     list.forEach(it=>{
       const row=document.createElement('div'); row.className='result';
-      let icon='🔎'; if(it.type==='app'){ if(it.icon && String(it.icon).includes(':')) icon = `<span class="iconify" data-icon="${it.icon}"></span>`; else if(it.icon && String(it.icon).startsWith('/')) icon = `<img class="app-img" src="${it.icon}" alt="">`; else icon = it.icon || '🗔'; }
-      else { icon = it.type==='folder'? '📁' : '📄'; }
+      let icon='🔎';
+      if(it.type==='app'){
+        if(it.icon && String(it.icon).includes(':')) icon = `<span class="iconify" data-icon="${it.icon}"></span>`;
+        else if(it.icon && String(it.icon).startsWith('/')) icon = `<img class="app-img" src="${it.icon}" alt="">`;
+        else icon = `<span class="iconify" data-icon="fluent:app-folder-20-regular"></span>`;
+      } else if(it.type==='file'){
+        icon = `<span class="iconify" data-icon="fluent:document-20-regular"></span>`;
+      } else if(it.type==='folder'){
+        icon = `<span class="iconify" data-icon="fluent:folder-20-regular"></span>`;
+      } else if(it.type==='settings'){
+        icon = `<span class="iconify" data-icon="fluent:settings-20-regular"></span>`;
+      } else if(it.type==='chat'){
+        icon = it.avatar ? `<img class="app-img" src="${it.avatar}" alt="avatar">` : `<span class="iconify" data-icon="fluent:chat-20-regular"></span>`;
+      }
       row.innerHTML = `<span class="ico">${icon}</span><span class="ttl">${it.title}</span>`;
       row.addEventListener('click', ()=>{
-        if(it.type==='app'){ launchApp(it.app); } else {
+        if(it.type==='app'){
+          launchApp(it.app);
+        } else if(it.type==='file' || it.type==='folder'){
           // Open Explorer to the path
           try{ window.postMessage({type:'webos:launch', app:{slug:'explorer', kind:'builtin', path: WEBOS_APPS['explorer'].path }, params:{path:it.path}, focus:true}, '*'); }catch{}
+        } else if(it.type==='settings'){
+          // Open Settings and navigate to section
+          try{ window.postMessage({type:'webos:launch', app:{slug:'settings', kind:'builtin', path: WEBOS_APPS['settings'].path }, params:{section: it.section}, focus:true}, '*'); }catch{}
+        } else if(it.type==='chat'){
+          // Open Chat app focused on user
+          try{ window.postMessage({type:'webos:launch', app:{slug:'chat', kind:'builtin', path: WEBOS_APPS['chat'].path }, params:{user: it.username}, focus:true}, '*'); }catch{}
         }
         searchMenu.classList.add('hidden'); searchMenu.classList.remove('show');
       });
@@ -1221,5 +1360,33 @@
       }));
       mo2.observe(document.body, {childList:true, subtree:true, attributes:true, attributeFilter:['data-icon']});
     }catch{}
+  })();
+  // Dock auto-hide: reveal on bottom-edge hover and keep visible when hovering over the taskbar; desktop only
+  (function(){
+    let hideTimer=null;
+    function reveal(){ if(document.body.classList.contains('dock-autohide') && !document.body.classList.contains('is-mobile')){ document.body.classList.add('dock-show'); if(hideTimer){ clearTimeout(hideTimer); hideTimer=null; } } }
+    function scheduleHide(){ if(!document.body.classList.contains('dock-autohide') || document.body.classList.contains('is-mobile')) return; if(hideTimer){ clearTimeout(hideTimer); }
+      hideTimer = setTimeout(()=>{ document.body.classList.remove('dock-show'); }, 1200);
+    }
+    window.addEventListener('mousemove', (e)=>{
+      try{
+        if(document.body.classList.contains('dock-autohide') && !document.body.classList.contains('is-mobile')){
+          const y = e.clientY;
+          if(y >= (window.innerHeight - 4)) reveal();
+        }
+      }catch{}
+    });
+    if(taskbarEl){
+      taskbarEl.addEventListener('mouseenter', reveal);
+      taskbarEl.addEventListener('mouseleave', scheduleHide);
+    }
+    // Keep visible when menus are open
+    [startMenu, appsMenu, userMenu, document.getElementById('search-menu')].forEach(m=>{
+      if(!m) return;
+      const obs = new MutationObserver(()=>{
+        try{ const open = !m.classList.contains('hidden'); if(open) reveal(); else scheduleHide(); }catch{}
+      });
+      try{ obs.observe(m, {attributes:true, attributeFilter:['class']}); }catch{}
+    });
   })();
 })();

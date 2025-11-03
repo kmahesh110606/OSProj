@@ -50,6 +50,10 @@ body.theme-light .pane-collapsed .side .item .ico{background:#ffffff}
           <button id="receive" class="btn">Receive</button>
         </div>
       </div>
+      <div id="stats" class="app-card" style="margin:12px; margin-bottom:0; display:flex; gap:16px; align-items:center">
+        <div><strong>Sent:</strong> <span id="stat-sent">0</span></div>
+        <div><strong>Received:</strong> <span id="stat-received">0</span></div>
+      </div>
       <div id="view-send" class="columns">
         <div class="card">
           <h3>Items to share</h3>
@@ -96,7 +100,7 @@ body.theme-light .pane-collapsed .side .item .ico{background:#ffffff}
     function addText(){ const name=prompt('File name','note.txt')||'note.txt'; const content=prompt('Text content',''); if(content===null) return; items.push({name, content, is_base64:false}); render(); }
     function addFile(){ const inp=$('#add-file'); inp.onchange=async()=>{ if(!inp.files.length) return; const f=inp.files[0]; const buf=await f.arrayBuffer(); const b64=btoa(String.fromCharCode(...new Uint8Array(buf))); items.push({name:f.name, content:b64, is_base64:true}); inp.value=''; render(); }; inp.click(); }
     $('#add-text').onclick=addText; $('#pick-file').onclick=addFile; $('#save-publish').onclick=publish; $('#receive').onclick=receive; $('#my-code').addEventListener('change', loadCurrent);
-    loadCurrent(); render();
+  loadCurrent(); render(); loadHistory();
 
     // Pane navigation
     const side=document.querySelector('.side');
@@ -123,6 +127,7 @@ body.theme-light .pane-collapsed .side .item .ico{background:#ffffff}
           row.innerHTML = `<span>${h.when} — <b>${h.dir}</b> ${h.name} ${h.code?('('+h.code+')'):''}</span>`;
           host.appendChild(row);
         });
+        if(j.metrics){ $('#stat-sent').textContent = j.metrics.sent||0; $('#stat-received').textContent = j.metrics.received||0; }
       }catch{}
     }
     // Support pane toggle and back from shell

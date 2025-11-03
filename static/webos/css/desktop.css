@@ -248,16 +248,47 @@ body.theme-light .user-actions .icon-btn{background:#ffffff;color:#0f172a}
 .dock-pop.hidden{display:none}
 
 /* Search menu above dock */
-.search-menu{position:absolute;bottom:110px;width:640px;max-height:50vh;overflow:hidden;background:rgba(17,24,39,.78);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.5);padding:10px;z-index:10001;opacity:0;transform:translateY(8px);transition:opacity var(--anim-med) var(--ease-in-out), transform var(--anim-med) var(--ease-in-out);display:flex;flex-direction:column}
+.search-menu{position:absolute;bottom:110px;width:720px;max-height:56vh;overflow:hidden;background:rgba(17,24,39,.82);backdrop-filter:blur(18px);border:1px solid var(--border);border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.55);padding:14px;z-index:10001;opacity:0;transform:translateY(8px);transition:opacity var(--anim-med) var(--ease-in-out), transform var(--anim-med) var(--ease-in-out);display:flex;flex-direction:column;gap:10px}
 .search-menu.hidden{display:none}
 .search-menu.show{opacity:1;transform:translateY(0)}
-.search-bar{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:10px;background:transparent;order:2;margin-top:10px}
+.search-bar{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:14px;background:rgba(0,0,0,.08);order:2;margin-top:6px}
 .search-bar .iconify{opacity:.9}
-.search-bar .input{background:transparent !important; border:0 !important; outline:none; color:var(--fg)}
+.search-bar .input{
+  background:transparent !important;
+  border:0 !important;
+  outline:none;
+  color:var(--fg);
+  font-size:16px; height:28px;
+  border-radius:12px;
+  transition: box-shadow var(--anim-med) var(--ease-in-out), background-size var(--anim-fast) var(--ease-in-out);
+  /* Gradient underline */
+  background-image: linear-gradient(90deg, var(--glow, #8b5cf6), var(--accent, #3b82f6));
+  background-repeat: no-repeat; background-position:left calc(100% - 0px); background-size: 0% 2px;
+}
+.search-bar:hover{ box-shadow:0 8px 20px rgba(139,92,246,.22), 0 0 0 1px rgba(139,92,246,.28) inset }
+.search-bar .input:focus{ background-size:100% 2px }
 .search-bar .input::placeholder{color:rgba(255,255,255,.7)}
-.search-results{margin-top:0;display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto;position:relative;z-index:1;order:1;flex:1}
-.search-results .result{display:flex;gap:8px;align-items:center;padding:8px;border-radius:8px;border:1px solid var(--border);background:#1f2937}
-.search-results .result:hover{box-shadow:0 8px 20px rgba(139,92,246,.25), 0 0 0 1px rgba(139,92,246,.35) inset}
+.search-results{margin-top:0;display:flex;flex-direction:column;gap:8px;max-height:44vh;overflow:auto;position:relative;z-index:1;order:1;flex:1}
+.search-results .result{display:flex;gap:12px;align-items:center;padding:12px;border-radius:12px;border:1px solid var(--border);background:#1f2937;cursor:pointer}
+.search-results .result:hover{box-shadow:0 10px 24px rgba(139,92,246,.28), 0 0 0 1px rgba(139,92,246,.38) inset}
+.search-results .result .ico{width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center}
+.search-results .result .ico .iconify{font-size:22px}
+.search-results .result .app-img{width:22px;height:22px;border-radius:6px;object-fit:cover}
+
+/* Mobile sizing for search: keep within screen without causing page scroll */
+body.is-mobile .search-menu{width:calc(100vw - 16px); left:50% !important; transform:translateX(-50%); bottom:84px; max-height:50vh; padding:10px}
+body.is-mobile .search-bar{padding:8px 10px; border-radius:12px}
+body.is-mobile .search-bar .input{font-size:14px; height:24px}
+body.is-mobile .search-results{max-height:44vh}
+
+/* Prevent autofill white background on shell search */
+.search-bar input:-webkit-autofill,
+.search-bar input:-webkit-autofill:hover,
+.search-bar input:-webkit-autofill:focus{
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset;
+  -webkit-text-fill-color: var(--fg);
+  transition: background-color 50000s ease-in-out 0s;
+}
 
 /* Menu animations */
 .start-menu,.apps-menu,.user-menu{opacity:0;transform:translateY(8px);transition:opacity var(--anim-med) var(--ease-in-out), transform var(--anim-med) var(--ease-in-out)}
@@ -310,3 +341,40 @@ body.is-mobile .resizer{display:none}
 body.theme-light .splash{ background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.6), rgba(255,255,255,.9)); }
 body.theme-light .splash-card{ background:#ffffff; box-shadow:0 30px 90px rgba(0,0,0,.12); }
 body.theme-light .dock-pop .dock-pop-title{ background:#ffffff; color:#0f172a; }
+
+/* Dock style: bar (full-width) */
+body.dock-style-bar .taskbar{
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  transform: none;
+  width: auto;
+  height: 56px;
+  border-radius: 0;
+}
+body.theme-light.dock-style-bar .taskbar{ background: rgba(255,255,255,.96); }
+
+/* Dock behavior: auto-hide (desktop only) */
+/* Auto-hide: floating dock (centered) must preserve translateX(-50%) */
+body.dock-autohide:not(.is-mobile):not(.dock-style-bar) .taskbar{
+  transform: translateX(-50%) translateY(80%) scale(.98);
+  opacity: .0;
+  transition: transform var(--anim-med) var(--ease-in-out), opacity var(--anim-med) var(--ease-in-out);
+}
+body.dock-autohide.dock-show:not(.is-mobile):not(.dock-style-bar) .taskbar{
+  transform: translateX(-50%);
+  opacity: 1;
+}
+/* Auto-hide: bar style spans full width, no X centering transform */
+body.dock-autohide.dock-style-bar:not(.is-mobile) .taskbar{
+  transform: translateY(80%) scale(.98);
+  opacity: .0;
+  transition: transform var(--anim-med) var(--ease-in-out), opacity var(--anim-med) var(--ease-in-out);
+}
+body.dock-autohide.dock-style-bar.dock-show:not(.is-mobile) .taskbar{
+  transform: none;
+  opacity: 1;
+}
+/* Keep popup aligned even when hidden */
+body.dock-autohide .dock-pop{ display: none; }
+
+/* Note: Dock settings are desktop-only; on mobile, ignore */

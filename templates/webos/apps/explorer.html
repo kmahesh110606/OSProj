@@ -66,6 +66,13 @@ body.app{height:100vh;display:flex;flex-direction:column}
 .view-list .item{flex-direction:row; align-items:center; gap:14px; padding:12px; margin-bottom:10px}
 .view-list .item .tile{width:42px; min-width:42px; height:42px; aspect-ratio:auto}
 .view-list .name{margin-top:0}
+/* Details pane */
+.details{border-top:1px solid var(--border); background:rgba(255,255,255,.03); padding:10px; display:flex; align-items:center; justify-content:space-between; gap:10px}
+.details .info{display:flex; flex-wrap:wrap; gap:10px; align-items:center; font-size:13px}
+.details .info .kv{display:flex; gap:6px; align-items:center}
+.details .info .k{opacity:.8}
+.details .name-full{max-width:44vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.details .copy{min-width:120px}
 /* Breadcrumb */
 .breadcrumb{display:flex;align-items:center;gap:6px;max-width:100%;min-width:120px;overflow:hidden}
 .crumb{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;cursor:pointer;white-space:nowrap}
@@ -133,6 +140,17 @@ body.app{height:100vh;display:flex;flex-direction:column}
   <input type="file" id="upload-folder-input" webkitdirectory directory multiple style="display:none" />
       </div>
       <div class="grid" id="grid"></div>
+      <div class="details" id="details">
+        <div class="info">
+          <span class="kv"><span class="k">Name:</span><span class="name-full" id="det-name">—</span></span>
+          <span class="kv"><span class="k">Ext:</span><span id="det-ext">—</span></span>
+          <span class="kv"><span class="k">Type:</span><span id="det-type">—</span></span>
+          <span class="kv"><span class="k">Size:</span><span id="det-size">—</span></span>
+          <span class="kv"><span class="k">Created:</span><span id="det-created">—</span></span>
+          <span class="kv"><span class="k">Updated:</span><span id="det-updated">—</span></span>
+        </div>
+        <button class="btn copy" id="det-copy">Copy info</button>
+      </div>
     </section>
   </div>
   <menu id="ctx" class="app-card ctx">
@@ -163,15 +181,70 @@ body.app{height:100vh;display:flex;flex-direction:column}
       </div>
     </div>
   </div>
+  <div id="modal-delete" class="app-card" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); align-items:center; justify-content:center; z-index:50">
+    <div class="app-card" style="min-width:320px; max-width:90vw">
+      <div style="font-weight:700; margin-bottom:6px">Delete selected items?</div>
+      <div id="del-summary" style="opacity:.85">This action cannot be undone.</div>
+      <div class="row" style="justify-content:flex-end; margin-top:10px; gap:8px">
+        <button id="del-cancel" class="btn">Cancel</button>
+        <button id="del-ok" class="btn" style="background:#7f1d1d; border-color:#ef4444">Delete</button>
+      </div>
+    </div>
+  </div>
   <script>
   const $=s=>document.querySelector(s);
     let cwd='/';
     let selected=null; let selectedPath=null; let clipboard=null; // legacy single
     let selection=new Set(); // multiple selected paths
+    let lastClickIndex = null; // for shift-range selection
     let viewMode='tiles'; // 'tiles' | 'list'
     let sortBy='name'; let sortDir=1; // 1 asc, -1 desc
     let searchQuery='';
     let navHistory=['/']; let navIndex=0;
+  let lastEntries = [];
+    function shortName(name){
+      name = String(name||'');
+      const i = name.lastIndexOf('.');
+      if(i<=0 || i===name.length-1) return name.length>28 ? (name.slice(0,25)+'…') : name;
+      const base = name.slice(0,i);
+      const ext = name.slice(i+1);
+      if(base.length <= 20) return name.length>28 ? (base+'….'+ext) : name;
+      return base.slice(0,17) + '….' + ext;
+    }
+    function bytesFmt(n){ if(n==null) return '—'; const s=['B','KB','MB','GB','TB']; let i=0; let v=Number(n)||0; while(v>=1024 && i<s.length-1){ v/=1024; i++; } return (i? v.toFixed(1): v.toFixed(0))+' '+s[i]; }
+    function extOf(name){ const m=String(name||'').match(/\.([^.]+)$/); return m? m[1].toLowerCase() : ''; }
+    const TYPE_MAP = {
+      // documents
+      'txt':'Text File','md':'Markdown','rtf':'Rich Text','pdf':'PDF Document','doc':'Microsoft Word Document','docx':'Microsoft Word Document','odt':'OpenDocument Text','tex':'LaTeX Source',
+      // spreadsheets
+      'xls':'Microsoft Excel Spreadsheet','xlsx':'Microsoft Excel Spreadsheet','ods':'OpenDocument Spreadsheet','csv':'CSV File',
+      // presentations
+      'ppt':'Microsoft PowerPoint Presentation','pptx':'Microsoft PowerPoint Presentation','odp':'OpenDocument Presentation',
+      // images
+      'png':'PNG Image','jpg':'JPEG Image','jpeg':'JPEG Image','gif':'GIF Image','webp':'WebP Image','bmp':'Bitmap Image','svg':'SVG Image',
+      // audio
+      'mp3':'MP3 Audio','wav':'WAV Audio','ogg':'OGG Audio','m4a':'M4A Audio','flac':'FLAC Audio',
+      // video
+      'mp4':'MPEG-4 Video','mov':'QuickTime Video','avi':'AVI Video','mkv':'Matroska Video','webm':'WebM Video',
+      // archives
+      'zip':'ZIP Archive','rar':'RAR Archive','7z':'7-Zip Archive','gz':'GZip Archive','tar':'TAR Archive',
+      // code/text
+      'js':'JavaScript File','ts':'TypeScript File','json':'JSON File','py':'Python File','java':'Java File','c':'C Source','cpp':'C++ Source','cs':'C# Source','html':'HTML Document','css':'CSS Stylesheet','xml':'XML File','yml':'YAML File','yaml':'YAML File',
+      // whiteboard & others
+      'wbdz':'Whiteboard File','apk':'Android Package','exe':'Windows Executable','iso':'ISO Image'
+    };
+    function typeFor(name, isDir){ if(isDir) return 'Folder'; const e=extOf(name); return TYPE_MAP[e]|| (e? (e.toUpperCase()+' File') : 'File'); }
+    function isoToNice(s){ if(!s) return '—'; try{ const d=new Date(s); return d.toLocaleString(); }catch{ return s; } }
+    function renderDetailsFromEntry(e){
+      const name = e?.name || '—';
+      $('#det-name').textContent = name;
+      $('#det-ext').textContent = extOf(name) || '—';
+      $('#det-type').textContent = typeFor(name, !!e?.is_dir);
+      $('#det-size').textContent = e && !e.is_dir ? bytesFmt(e.size_bytes) : '—';
+      $('#det-created').textContent = isoToNice(e?.created_at);
+      $('#det-updated').textContent = isoToNice(e?.updated_at);
+    }
+    function findEntryByPath(p){ return (lastEntries||[]).find(x=> x.path===p); }
     function updateNavButtons(){ const back=$('#btn-back'), fwd=$('#btn-forward'); if(back){ back.disabled = navIndex<=0; } if(fwd){ fwd.disabled = navIndex>=(navHistory.length-1); } }
     function navigateTo(path, opts){ opts=opts||{}; if(!path) path='/'; if(!path.startsWith('/')) path='/'+path; if(cwd===path && !opts.force){ return; } cwd=path; if(opts.addToHistory!==false){ // normal push
         // drop forward stack
@@ -198,19 +271,26 @@ body.app{height:100vh;display:flex;flex-direction:column}
         return 0;
       });
       if(searchQuery){ const q=searchQuery.toLowerCase(); ents = ents.filter(e=> (e.name||'').toLowerCase().includes(q)); }
-      const g=$('#grid'); g.innerHTML='';
-      ents.forEach(e=>{
+  const g=$('#grid'); g.innerHTML='';
+  lastEntries = ents;
+      // Publish a lightweight cache to the desktop shell for global search (name, path, is_dir)
+      try{
+        const cache = ents.map(e=>({ name: e.name, path: e.path, is_dir: !!e.is_dir }));
+        window.parent.postMessage({ type: 'webos:setState', state: { fs_cache: cache } }, '*');
+      }catch{}
+      ents.forEach((e, idx)=>{
         const d=document.createElement('div'); d.className='item';
         d.dataset.path=e.path; d.dataset.dir=e.is_dir? '1':'0';
         d.dataset.name=e.name;
-        let tileHtml='';
+        d.dataset.idx = String(idx);
+  let tileHtml='';
         if(!e.is_dir && isImageName(e.name)){
           // image thumb
           fetch(`../api/fs/read?path=${encodeURIComponent(e.path)}`).then(r=>r.json()).then(j=>{
             const url = j.is_base64? `data:;base64,${j.content}` : `data:text/plain;base64,${btoa(j.content||'')}`;
             d.querySelector('.tile').innerHTML = `<img src="${url}">`;
           });
-          tileHtml = `<div class="tile"><div class="thumb">🖼️</div></div><div class="name">${e.name}</div>`;
+          tileHtml = `<div class="tile"><div class="thumb">🖼️</div></div><div class="name">${shortName(e.name)}</div>`;
         } else if(!e.is_dir && isWhiteboardName(e.name)){
           // whiteboard preview if available
           fetch(`../api/fs/read?path=${encodeURIComponent(e.path)}`).then(r=>r.json()).then(j=>{
@@ -221,13 +301,24 @@ body.app{height:100vh;display:flex;flex-direction:column}
             }catch{}
             d.querySelector('.tile').innerHTML = `<div class="thumb">📝</div>`;
           }).catch(()=>{ d.innerHTML=`<div class="thumb">📝</div><div class="name">${e.name}</div>`; });
-          tileHtml = `<div class="tile"><div class="thumb">📝</div></div><div class="name">${e.name}</div>`;
+          tileHtml = `<div class="tile"><div class="thumb">📝</div></div><div class="name">${shortName(e.name)}</div>`;
         } else {
-          tileHtml = `<div class="tile"><div class="thumb">${e.is_dir?'📁':'📄'}</div></div><div class="name">${e.name}</div>`;
+          tileHtml = `<div class="tile"><div class="thumb">${e.is_dir?'📁':'📄'}</div></div><div class="name">${shortName(e.name)}</div>`;
         }
         d.innerHTML = tileHtml;
         d.addEventListener('click', (ev)=>{
-          if(ev.ctrlKey || ev.metaKey){
+          const all = Array.from(document.querySelectorAll('#grid .item'));
+          const curIdx = Number(d.dataset.idx || all.indexOf(d));
+          if(ev.shiftKey && lastClickIndex !== null){
+            // Range select between lastClickIndex and curIdx
+            const [a,b] = curIdx>=lastClickIndex ? [lastClickIndex, curIdx] : [curIdx, lastClickIndex];
+            clearSelection();
+            for(let i=a;i<=b;i++){
+              const el = all[i]; if(!el) continue;
+              el.classList.add('selected');
+              if(el.dataset.path) selection.add(el.dataset.path);
+            }
+          } else if(ev.ctrlKey || ev.metaKey){
             const was = selection.has(e.path);
             if(was){ selection.delete(e.path); d.classList.remove('selected'); }
             else { selection.add(e.path); d.classList.add('selected'); }
@@ -235,7 +326,7 @@ body.app{height:100vh;display:flex;flex-direction:column}
             clearSelection();
             selection.add(e.path); d.classList.add('selected');
           }
-          selected=e; selectedPath=e.path;
+          selected=e; selectedPath=e.path; lastClickIndex = curIdx; renderDetailsFromEntry(findEntryByPath(e.path));
         });
         d.addEventListener('dblclick', ()=>{
           if(e.is_dir){ navigateTo(e.path); }
@@ -248,7 +339,16 @@ body.app{height:100vh;display:flex;flex-direction:column}
             else { showUnsupported(e.path); }
           }
         });
-        d.oncontextmenu=(ev)=>{ ev.preventDefault(); selected=e; showCtx(ev.clientX, ev.clientY); };
+        d.oncontextmenu=(ev)=>{
+          ev.preventDefault();
+          // If right-clicking on an unselected item, select it first (single)
+          if(!selection.has(e.path)){
+            clearSelection();
+            selection.add(e.path); d.classList.add('selected');
+            lastClickIndex = Number(d.dataset.idx||0);
+          }
+          selected=e; selectedPath=e.path; showCtx(ev.clientX, ev.clientY);
+        };
         // Drag & drop move between folders
         d.setAttribute('draggable','true');
         d.addEventListener('dragstart', (ev)=>{
@@ -261,7 +361,7 @@ body.app{height:100vh;display:flex;flex-direction:column}
           const data = ev.dataTransfer.getData('text/plain');
           try{ const paths = JSON.parse(data)||[]; for(const src of paths){ await moveOne(src, e.path); } ls(); }catch{}
         });
-        if(selectedPath && selectedPath===e.path){ d.classList.add('selected'); }
+  if(selectedPath && selectedPath===e.path){ d.classList.add('selected'); renderDetailsFromEntry(findEntryByPath(e.path)); }
         g.appendChild(d);
 
       });
@@ -360,6 +460,21 @@ body.app{height:100vh;display:flex;flex-direction:column}
       if(!clipboard) return; const target = cwd.endsWith('/')? cwd : (cwd+'/'); const fd=new FormData(); fd.set('src', clipboard.src); fd.set('dst', target); const url = clipboard.op==='move'? '../api/fs/move' : '../api/fs/copy'; await fetch(url,{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); if(clipboard.op==='move') clipboard=null; ls();
     }
   async function remove(){ const paths = selection.size? Array.from(selection) : (selected? [selected.path]:[]); if(!paths.length) return; const ok=confirm('Delete selected?'); if(!ok) return; for(const p of paths){ const fd=new FormData(); fd.set('path', p); await fetch('../api/fs/delete',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); } clearSelection(); ls(); }
+  async function confirmDelete(){
+    return new Promise((resolve)=>{
+      const m=$('#modal-delete'); const sum=$('#del-summary');
+      const paths = selection.size? Array.from(selection) : (selected? [selected.path]:[]);
+      const label = paths.length===1 ? (paths[0].split('/').pop()) : `${paths.length} items`;
+      sum.textContent = `Delete ${label}? This action cannot be undone.`;
+      const ok=$('#del-ok'); const cancel=$('#del-cancel');
+      function cleanup(){ ok.removeEventListener('click', onOk); cancel.removeEventListener('click', onCancel); m.style.display='none'; }
+      function onOk(){ cleanup(); resolve(true); }
+      function onCancel(){ cleanup(); resolve(false); }
+      ok.addEventListener('click', onOk); cancel.addEventListener('click', onCancel);
+      m.style.display='flex';
+    });
+  }
+  async function remove(){ const paths = selection.size? Array.from(selection) : (selected? [selected.path]:[]); if(!paths.length) return; const ok = await confirmDelete(); if(!ok) return; for(const p of paths){ const fd=new FormData(); fd.set('path', p); await fetch('../api/fs/delete',{method:'POST', body:fd, headers:{'X-CSRFToken':getCsrf()}}); } clearSelection(); ls(); }
   $('#mk').onclick=mkdir; $('#newfile').onclick=newFile; 
   // Unified upload dropdown
   const upBtn=$('#btn-upload'); const upMenu=$('#upload-menu');
@@ -369,7 +484,7 @@ body.app{height:100vh;display:flex;flex-direction:column}
   $('#upload-folder-opt').onclick=()=>{ upMenu.style.display='none'; uploadFolder(); };
   $('#btn-back').onclick=navigateBack; $('#btn-forward').onclick=navigateForward; updateNavButtons();
   $('#btn-download').onclick=download; $('#btn-rename').onclick=doRename; $('#btn-cut').onclick=cut; $('#btn-copy').onclick=copy; $('#btn-paste').onclick=paste; $('#btn-delete').onclick=remove; $('#btn-sort').onclick=()=>{ sortDir*=-1; ls(); }; $('#btn-view').onclick=()=>{ viewMode = (viewMode==='tiles'?'list':'tiles'); document.body.classList.toggle('view-list', viewMode==='list'); };
-  $('#ctx').addEventListener('click', (e)=>{ const act=e.target?.dataset?.act; if(!act) return; hideCtx(); if(act==='download') download(); else if(act==='rename') doRename(); else if(act==='cut') cut(); else if(act==='copy') copy(); else if(act==='paste') paste(); else if(act==='delete') remove(); });
+  $('#ctx').addEventListener('click', (e)=>{ const btn = e.target && e.target.closest ? e.target.closest('.menu-btn') : null; const act=btn?.dataset?.act; if(!act) return; hideCtx(); if(act==='download') download(); else if(act==='rename') doRename(); else if(act==='cut') cut(); else if(act==='copy') copy(); else if(act==='paste') paste(); else if(act==='delete') remove(); });
   $('#search').addEventListener('input', ()=>{ searchQuery = ($('#search').value||'').trim(); ls(); });
   // Initial load
   buildTree();
@@ -443,9 +558,26 @@ body.app{height:100vh;display:flex;flex-direction:column}
         hidden.forEach(b=>{
           b.style.display='none';
           const item=document.createElement('button'); item.className='menu-btn';
-          // Clone icon span if present
+          // Try to clone icon; if missing, map by button id to ensure an icon exists
           const iconSpan = b.querySelector('span.iconify');
           if(iconSpan){ item.appendChild(iconSpan.cloneNode(true)); }
+          else {
+            const ICON_BY_ID = {
+              'btn-upload': 'fluent:arrow-upload-20-regular',
+              'mk': 'fluent:folder-add-20-regular',
+              'newfile': 'fluent:document-add-20-regular',
+              'btn-download': 'fluent:arrow-download-20-regular',
+              'btn-rename': 'fluent:rename-20-regular',
+              'btn-cut': 'fluent:cut-20-regular',
+              'btn-copy': 'fluent:copy-20-regular',
+              'btn-paste': 'fluent:clipboard-paste-20-regular',
+              'btn-sort': 'fluent:arrow-sort-20-regular',
+              'btn-view': 'fluent:apps-list-20-regular',
+              'btn-delete': 'fluent:delete-20-regular'
+            };
+            const id = b.id && ICON_BY_ID[b.id];
+            if(id){ const span = document.createElement('span'); span.className='iconify'; span.setAttribute('data-icon', id); item.appendChild(span); }
+          }
           // Label span
           const labelSpan = Array.from(b.querySelectorAll('span')).find(s=>!s.classList.contains('iconify'));
           const lbl = document.createElement('span'); lbl.textContent = (labelSpan && labelSpan.textContent) || (b.textContent||b.id).trim();
@@ -476,5 +608,11 @@ body.app{height:100vh;display:flex;flex-direction:column}
     });
     // Unsupported modal helpers
     function showUnsupported(path){ const m=$('#modal-unsupported'); m.style.display='flex'; $('#unsup-download').onclick=()=>{ window.open(`../api/fs/download?path=${encodeURIComponent(path)}`, '_blank'); }; $('#unsup-close').onclick=()=>{ m.style.display='none'; }; }
+    // Copy details
+    document.getElementById('det-copy').addEventListener('click', async ()=>{
+      const n=$('#det-name').textContent||''; const ext=$('#det-ext').textContent||''; const typ=$('#det-type').textContent||''; const sz=$('#det-size').textContent||''; const cr=$('#det-created').textContent||''; const up=$('#det-updated').textContent||'';
+      const txt = `Name: ${n}\nExtension: ${ext}\nType: ${typ}\nSize: ${sz}\nCreated: ${cr}\nUpdated: ${up}`;
+      try{ await navigator.clipboard.writeText(txt); }catch(e){ /* ignore */ }
+    });
   </script>
 </body></html>

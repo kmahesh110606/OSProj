@@ -32,6 +32,9 @@ input[type="checkbox"]{transform:scale(1.2)}
 .stat{display:flex;gap:10px;align-items:center}
 .pill{padding:6px 10px;border:1px solid var(--border);border-radius:999px}
 textarea.input{min-height:100px}
+/* Ensure selects/inputs look consistent */
+select.input, input.input{background:transparent;border:1px solid var(--border);border-radius:10px;color:inherit;padding:8px 10px}
+select.input{min-width:180px}
 /* Reduced motion inside app */
 @media (prefers-reduced-motion: reduce){
   .side, .side .item, .side .item .txt{ transition: none !important; }
@@ -108,6 +111,27 @@ textarea.input{min-height:100px}
           </div>
           <div class="row" style="margin-top:8px">
             <button id="saveTheme" class="btn icon"><span class="iconify" data-icon="fluent:save-20-regular"></span><span>Save Theme</span></button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title">Dock (desktop only)</div>
+          <div class="row" style="margin-top:8px;align-items:center">
+            <label for="dock-style" class="kv"><span class="k">Style</span></label>
+            <select id="dock-style" class="input">
+              <option value="floating">Floating</option>
+              <option value="bar">Bar</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top:8px;align-items:center">
+            <label for="dock-behavior" class="kv"><span class="k">Behavior</span></label>
+            <select id="dock-behavior" class="input">
+              <option value="fixed">Fixed</option>
+              <option value="autohide">Auto-hide</option>
+            </select>
+          </div>
+          <div class="muted" style="margin-top:6px">Changes affect only desktop layout. On mobile, the dock is simplified.</div>
+          <div class="row" style="margin-top:8px">
+            <button id="saveDock" class="btn icon"><span class="iconify" data-icon="fluent:save-20-regular"></span><span>Save Dock</span></button>
           </div>
         </div>
       </section>
@@ -195,8 +219,24 @@ textarea.input{min-height:100px}
         const s = ev.data.state||{}; CUR_STATE = s;
   document.getElementById('theme').value = s.appearance?.theme || 'dark';
   document.getElementById('wallpaper').value = s.appearance?.wallpaper || '';
+        // Dock prefs
+        try{
+          const dock = (s.appearance && s.appearance.dock) || {};
+          document.getElementById('dock-style').value = dock.style || 'floating';
+          document.getElementById('dock-behavior').value = dock.behavior || 'fixed';
+        }catch{}
         // Prefill account if provided via shell (optional)
         if(s.account){ acc_username.value=s.account.username||''; acc_email.value=s.account.email||''; acc_phone.value=s.account.phone||''; }
+      }
+      // Navigate to sub-section if shell launches with params
+      if(ev.data?.type==='webos:params' && ev.data.params){
+        try{
+          const sec = ev.data.params.section;
+          if(sec){
+            const item = side.querySelector(`.item[data-sec="${sec}"]`);
+            if(item){ item.click(); }
+          }
+        }catch{}
       }
       if(ev.data?.type==='webos:togglePane'){
         document.body.classList.toggle('pane-collapsed');
@@ -215,6 +255,26 @@ textarea.input{min-height:100px}
       const appearance = Object.assign({}, CUR_STATE.appearance||{}, {wallpaper});
       CUR_STATE.appearance = appearance;
       window.parent.postMessage({type:'webos:setState', state:{appearance}}, '*');
+    });
+    document.getElementById('saveDock').addEventListener('click', ()=>{
+      const style = document.getElementById('dock-style').value;
+      const behavior = document.getElementById('dock-behavior').value;
+      const dock = { style, behavior };
+      const appearance = Object.assign({}, CUR_STATE.appearance||{}, { dock });
+      CUR_STATE.appearance = appearance;
+      window.parent.postMessage({type:'webos:setState', state:{appearance}}, '*');
+    });
+    // Apply dock change immediately on selection change for instant feedback
+    ['dock-style','dock-behavior'].forEach(id=>{
+      const el=document.getElementById(id);
+      el.addEventListener('change', ()=>{
+        const style = document.getElementById('dock-style').value;
+        const behavior = document.getElementById('dock-behavior').value;
+        const dock = { style, behavior };
+        const appearance = Object.assign({}, CUR_STATE.appearance||{}, { dock });
+        CUR_STATE.appearance = appearance;
+        window.parent.postMessage({type:'webos:setState', state:{appearance}}, '*');
+      });
     });
 
   // Account: persist directly to server via API

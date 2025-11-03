@@ -3,6 +3,10 @@
 	/* Animation tokens for apps (iframe scope) */
 	--anim-fast: .14s; --anim-med: .22s; --anim-slow: .36s;
 	--ease-out: cubic-bezier(.22,1,.36,1); --ease-in-out: cubic-bezier(.4,0,.2,1);
+  /* Input effects */
+  --glow-color: #8b5cf6; /* purple */
+  --accent-2: #3b82f6;   /* blue */
+  --input-radius: 12px;  /* medium radius */
 }
 body.app{ margin:0; font-family:system-ui,Segoe UI,Arial,sans-serif; color:var(--text); background:transparent; }
 .app-card{ background:var(--surface); backdrop-filter:blur(14px) saturate(1.05); border:1px solid var(--border); border-radius:14px; padding:14px; transition: box-shadow var(--anim-med) var(--ease-in-out), transform var(--anim-fast) var(--ease-out) }
@@ -16,8 +20,27 @@ body.app{ margin:0; font-family:system-ui,Segoe UI,Arial,sans-serif; color:var(-
 .ripple-ring{ position:absolute; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; opacity:.5; mix-blend-mode:screen; animation:rippleAnim var(--anim-slow) var(--ease-out) forwards }
 @keyframes rippleAnim{ from{ width:0; height:0; opacity:.6 } to{ width:300px; height:300px; opacity:0 } }
 .field{ display:flex; flex-direction:column; gap:6px }
-.input{ padding:8px 12px; border:1px solid var(--border); border-radius:12px; background:#0b1220; color:#e5e7eb; transition: border-color var(--anim-fast) var(--ease-in-out), background var(--anim-fast) var(--ease-in-out) }
-.input:focus{ outline:none; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); background: rgba(11,18,32,.9) }
+.input{
+	padding:10px 12px;
+	border:1px solid var(--border);
+	border-radius: var(--input-radius);
+	background: rgba(11,18,32,.9);
+	color: var(--text);
+	transition: box-shadow var(--anim-med) var(--ease-in-out), border-color var(--anim-fast) var(--ease-in-out), background var(--anim-fast) var(--ease-in-out), background-size var(--anim-fast) var(--ease-in-out);
+	/* Gradient underline (inactive size 0) */
+	background-image: linear-gradient(90deg, var(--glow-color), var(--accent-2));
+	background-repeat: no-repeat;
+	background-position: left calc(100% - 0px);
+	background-size: 0% 2px;
+}
+.input:hover{
+	box-shadow: 0 8px 20px rgba(139,92,246,.22), 0 0 0 1px rgba(139,92,246,.28) inset;
+}
+.input:focus{
+	outline:none;
+	border-color: color-mix(in oklab, var(--accent) 60%, var(--border));
+	background-size: 100% 2px; /* animate gradient underline in */
+}
 .grid{ display:grid; gap:8px }
 .grid.auto-fit-120{ grid-template-columns:repeat(auto-fit,minmax(120px,1fr)) }
 .grid.auto-fit-140{ grid-template-columns:repeat(auto-fit,minmax(140px,1fr)) }
@@ -25,7 +48,26 @@ body.app{ margin:0; font-family:system-ui,Segoe UI,Arial,sans-serif; color:var(-
 /* Light theme overrides when parent adds .theme-light */
 .theme-light .window .content iframe body.app, .theme-light body.app{ --surface: rgba(255,255,255,.86); --text:#0f172a; --border:#cbd5e1; --accent:#2563eb; }
 .theme-light .btn{ background:#eef2ff; color:#111 }
-.theme-light .input{ background:#fff; color:#111 }
+.theme-light .input{ background:#ffffff; color:#111 }
+
+/* Autofill overrides (prevent default white/yellow fill) */
+input.input:-webkit-autofill,
+input.input:-webkit-autofill:hover,
+input.input:-webkit-autofill:focus{
+	-webkit-box-shadow: 0 0 0px 1000px rgba(11,18,32,.9) inset;
+	-webkit-text-fill-color: var(--text);
+	transition: background-color 50000s ease-in-out 0s;
+	caret-color: var(--text);
+}
+.theme-light input.input:-webkit-autofill,
+.theme-light input.input:-webkit-autofill:hover,
+.theme-light input.input:-webkit-autofill:focus{
+	-webkit-box-shadow: 0 0 0px 1000px #ffffff inset;
+	-webkit-text-fill-color: #0f172a;
+	caret-color: #0f172a;
+}
+input.input:autofill{ box-shadow: 0 0 0 1000px rgba(11,18,32,.9) inset; }
+.theme-light input.input:autofill{ box-shadow: 0 0 0 1000px #ffffff inset; }
 
 /* Global scrollbars inside apps: transparent tracks */
 *::-webkit-scrollbar-track{ background: transparent }
@@ -35,6 +77,14 @@ body.app{ margin:0; font-family:system-ui,Segoe UI,Arial,sans-serif; color:var(-
 
 /* Subtle card hover lift in apps */
 .app-card:hover{ box-shadow: 0 10px 24px rgba(0,0,0,.25) }
+
+/* App Splash overlay */
+.app-splash{position:fixed;inset:0;background:radial-gradient(1200px 500px at 50% -10%, rgba(59,130,246,.28), transparent 60%) , var(--surface);backdrop-filter: blur(16px) saturate(1.02);display:flex;align-items:center;justify-content:center;z-index:99999;opacity:1;transition:opacity var(--anim-slow) var(--ease-in-out)}
+.app-splash .splash-inner{display:flex;flex-direction:column;align-items:center;gap:16px}
+.app-splash .splash-icon{width:120px;height:120px;border-radius:24px;border:1px solid var(--border);background:rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.app-splash .splash-icon img{width:72px;height:72px;object-fit:contain}
+.app-splash .splash-name{position:absolute;left:0;right:0;bottom:36px;text-align:center;font-weight:700;font-size:18px;opacity:.9}
+.app-splash.hide{opacity:0;pointer-events:none}
 
 /* App enter animations */
 @keyframes appFadeInUp { from{ opacity:0; transform: translateY(6px) scale(.98); } to{ opacity:1; transform: translateY(0) scale(1); } }

@@ -77,26 +77,23 @@ form label { font-size: .9rem; opacity: .9; display: block; margin-bottom: 6px; 
 .input {
   width: 100%;
   box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(2,6,23,0.35), rgba(2,6,23,0.2));
+  background: rgba(11,18,32,.9);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 12px; /* medium */
   padding: 10px 12px;
   outline: none;
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 100ms ease;
+  transition: box-shadow 220ms ease, border-color 180ms ease, background-size 160ms ease;
+  /* Gradient underline */
+  background-image: linear-gradient(90deg, #8b5cf6, #3b82f6);
+  background-repeat:no-repeat; background-position:left calc(100% - 0px); background-size:0% 2px;
 }
 
 .input::placeholder { color: #94a3b8; }
 
-.input:hover {
-  border-color: rgba(96,165,250,0.45);
-  box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
-}
+.input:hover { box-shadow: 0 8px 20px rgba(139,92,246,.22), 0 0 0 1px rgba(139,92,246,.28) inset; }
 
-.input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--ring), 0 0 18px rgba(96,165,250,0.25);
-}
+.input:focus { border-color: var(--accent); background-size: 100% 2px; }
 
 .actions {
   display: flex;
@@ -130,6 +127,16 @@ form label { font-size: .9rem; opacity: .9; display: block; margin-bottom: 6px; 
 
 a { color: #93c5fd; text-decoration: none; }
 a:hover { text-shadow: 0 0 12px rgba(147,197,253,0.55); }
+
+/* Autofill overrides to keep theme */
+input.input:-webkit-autofill,
+input.input:-webkit-autofill:hover,
+input.input:-webkit-autofill:focus{
+  -webkit-box-shadow: 0 0 0px 1000px rgba(11,18,32,.9) inset;
+  -webkit-text-fill-color: var(--text);
+  transition: background-color 50000s ease-in-out 0s;
+  caret-color: var(--text);
+}
 
 /* Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {

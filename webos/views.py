@@ -168,10 +168,38 @@ def fs_list(request: HttpRequest) -> JsonResponse:
             name = rel.split('/',1)[0]
             child_path = prefix + name
             if child_path not in seen:
-                entries.append({"name": name, "path": child_path, "is_dir": True})
+                # Directory placeholder (meta unknown unless explicit dir row exists)
+                entries.append({
+                    "name": name,
+                    "path": child_path,
+                    "is_dir": True,
+                    "size_bytes": None,
+                    "created_at": None,
+                    "updated_at": None,
+                })
                 seen.add(child_path)
         else:
-            entries.append({"name": rel, "path": uf.path, "is_dir": uf.is_dir})
+            # File entry with metadata
+            size_bytes = 0
+            data = uf.content or ''
+            try:
+                if data.startswith('B64:'):
+                    size_bytes = len(base64.b64decode(data[4:], validate=False))
+                else:
+                    size_bytes = len((data).encode('utf-8', errors='ignore'))
+            except Exception:
+                try:
+                    size_bytes = max(0, len(data) - 4) if data.startswith('B64:') else len((data or '').encode('utf-8', errors='ignore'))
+                except Exception:
+                    size_bytes = 0
+            entries.append({
+                "name": rel,
+                "path": uf.path,
+                "is_dir": uf.is_dir,
+                "size_bytes": size_bytes,
+                "created_at": getattr(uf.created_at, 'isoformat', lambda: None)() if uf.created_at else None,
+                "updated_at": getattr(uf.updated_at, 'isoformat', lambda: None)() if uf.updated_at else None,
+            })
     return JsonResponse({"path": path, "entries": entries})
 
 
@@ -754,7 +782,26 @@ def store_list(request: HttpRequest) -> JsonResponse:
     # List all enabled apps and which ones the user has installed (include built-ins as non-uninstallable)
     installs = set(UserAppInstall.objects.filter(user=request.user).values_list('app_id', flat=True))
     rows = []
+    import urllib.parse as _urlparse
+    # Exclude Google/YouTube apps that don't embed well
+    def _exclude_app(a: App) -> bool:
+        try:
+            if not a.launch_url:
+                return False
+            host = (_urlparse.urlparse(a.launch_url).hostname or '').lower()
+            if not host:
+                return False
+            if host in {'youtube.com','www.youtube.com','m.youtube.com','youtu.be'}:
+                return True
+            # any *.google.* host (docs, drive, mail, etc.)
+            if host == 'google.com' or host.endswith('.google.com') or host.startswith('google.') or '.google.' in host:
+                return True
+            return False
+        except Exception:
+            return False
     for a in App.objects.filter(is_enabled=True).order_by('name'):
+        if _exclude_app(a):
+            continue
         rows.append({
             "id": a.id, "slug": a.slug, "name": a.name, "kind": a.kind,
             "icon": a.icon, "launch_url": a.launch_url, "use_proxy": a.use_proxy,
@@ -1031,7 +1078,9 @@ def sharedrop_history(request: HttpRequest) -> JsonResponse:
         items = (st.state_json or {}).get('sharedrop_history') or []
     except Exception:
         items = []
-    return JsonResponse({"items": items})
+    sent = sum(1 for h in items if h.get('dir') == 'sent')
+    received = sum(1 for h in items if h.get('dir') == 'received')
+    return JsonResponse({"items": items, "metrics": {"sent": sent, "received": received}})
 
 
 # Minimal proxy to load external pages into iframe when sites refuse embedding.
